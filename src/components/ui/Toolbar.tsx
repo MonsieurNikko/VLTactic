@@ -21,6 +21,8 @@ export default function Toolbar() {
     setDrawColor,
     drawings,
     undoDrawing,
+    redoDrawings,
+    redoDrawing,
     resetView,
   } = useBoardStore();
 
@@ -131,6 +133,14 @@ export default function Toolbar() {
       >
         ↩
       </button>
+      <button
+        onClick={redoDrawing}
+        disabled={redoDrawings.length === 0}
+        className="px-2 h-7 flex items-center justify-center bg-neutral-800 text-neutral-300 rounded hover:bg-neutral-700 transition-colors text-xs disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
+        title="Redo drawing (Ctrl+Y)"
+      >
+        ↪
+      </button>
 
       <div className="w-px h-6 bg-neutral-700 shrink-0" />
 
@@ -179,7 +189,7 @@ export default function Toolbar() {
       {/* Keyboard shortcuts help */}
       <div
         className="w-6 h-6 flex items-center justify-center rounded-full bg-neutral-800 text-neutral-500 text-xs cursor-help hover:bg-neutral-700 hover:text-neutral-300 transition-colors shrink-0"
-        title={`Shortcuts:\n• V = Select · D = Draw · A = Arrow\n• Scroll = Zoom\n• Space + Drag = Pan\n• Right-click Drag = Pan\n• Delete/Backspace = Remove selected\n• Ctrl+Z = Undo drawing\n• Esc = Cancel placement`}
+        title={`Shortcuts:\n• V = Select · D = Draw · A = Arrow\n• Scroll = Zoom\n• Space + Drag = Pan\n• Right-click Drag = Pan\n• Delete/Backspace = Remove selected\n• Ctrl+Z = Undo · Ctrl+Y = Redo\n• Esc = Cancel placement`}
       >
         ?
       </div>

@@ -65,3 +65,14 @@ This document tracks the evolution of the project. **AI Agents MUST read this fi
     - **Keyboard shortcuts:** `V`=Select, `D`=Draw, `A`=Arrow, `Ctrl+Z`=Undo, `Space+Drag`=Pan, `Delete`=Remove, `Esc`=Cancel.
   - **Context:** Second self-evaluation rated 6.5/10 identifying 9 issues. This round systematically addressed ALL of them. App now at a usable baseline for strategy planning.
   - **Git:** Pushed to `https://github.com/MonsieurNikko/VLTactic.git` (branch `main`).
+
+## [v0.4.0] - Phase 1.6: UX & Drawing Control Upgrade
+- **2026-02-11** - **User Testing + Usability Pass**
+  - **Author:** GitHub Copilot
+  - **Changes:**
+    - Agent icons now render directly on the canvas (CDN avatar inside circle) for clear identification.
+    - Drawing selection added: click a drawing to select, `Delete/Backspace` removes it.
+    - Redo support added (`Ctrl+Y` / `Ctrl+Shift+Z`) with toolbar redo button.
+    - Pending agent auto-cancels when switching to Draw/Arrow tools to avoid accidental placement.
+    - Onboarding/shortcut hints updated with redo shortcut.
+  - **Context:** Addressed post-review usability gaps (canvas agent recognition, drawing control, undo/redo workflow).

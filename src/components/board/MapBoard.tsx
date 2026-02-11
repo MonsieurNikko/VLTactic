@@ -29,6 +29,7 @@ export default function MapBoard() {
     activeTool,
     drawings,
     drawColor,
+    selectedDrawingId,
     setViewport,
     selectItem,
     addItem,
@@ -36,8 +37,11 @@ export default function MapBoard() {
     setPendingAgent,
     addDrawing,
     undoDrawing,
+    redoDrawing,
+    removeDrawing,
     setStageSize,
     setActiveTool,
+    setSelectedDrawing,
   } = useBoardStore();
 
   const [stageSize, setStageSizeLocal] = useState({ width: 800, height: 600 });
@@ -148,6 +152,10 @@ export default function MapBoard() {
         e.preventDefault();
         removeItem(selectedItemId);
       }
+      if ((e.code === "Delete" || e.code === "Backspace") && selectedDrawingId) {
+        e.preventDefault();
+        removeDrawing(selectedDrawingId);
+      }
       // Escape to cancel pending agent or deselect
       if (e.code === "Escape") {
         if (pendingAgent) setPendingAgent(null);
@@ -156,7 +164,12 @@ export default function MapBoard() {
       // Ctrl+Z → undo drawing
       if ((e.ctrlKey || e.metaKey) && e.code === "KeyZ") {
         e.preventDefault();
-        undoDrawing();
+        if (e.shiftKey) redoDrawing();
+        else undoDrawing();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.code === "KeyY") {
+        e.preventDefault();
+        redoDrawing();
       }
       // Tool shortcuts: V = select, D = draw, A = arrow
       if (e.code === "KeyV" && !e.ctrlKey && !e.metaKey) setActiveTool("select");
@@ -175,7 +188,7 @@ export default function MapBoard() {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [selectedItemId, pendingAgent, removeItem, setPendingAgent, selectItem, undoDrawing, setActiveTool]);
+  }, [selectedItemId, selectedDrawingId, pendingAgent, removeItem, removeDrawing, setPendingAgent, selectItem, undoDrawing, redoDrawing, setActiveTool]);
 
   // ── Zoom with mouse wheel ─────────────────────────────────
   const handleWheel = useCallback(
@@ -220,6 +233,7 @@ export default function MapBoard() {
 
       if (clickedOnEmpty) {
         selectItem(null);
+        setSelectedDrawing(null);
       }
 
       if (pendingAgent && clickedOnEmpty) {
@@ -242,7 +256,7 @@ export default function MapBoard() {
         });
       }
     },
-    [pendingAgent, viewport, addItem, selectItem]
+    [pendingAgent, viewport, addItem, selectItem, setSelectedDrawing]
   );
 
   // ── Pan with middle mouse / right-click / Space+left-click ─
@@ -433,7 +447,11 @@ export default function MapBoard() {
                 <kbd className="px-1.5 py-0.5 bg-neutral-800 rounded text-neutral-300 text-[10px]">
                   Ctrl+Z
                 </kbd>{" "}
-                Undo
+                Undo ·{" "}
+                <kbd className="px-1.5 py-0.5 bg-neutral-800 rounded text-neutral-300 text-[10px]">
+                  Ctrl+Y
+                </kbd>{" "}
+                Redo
               </p>
             </div>
           </div>
@@ -534,28 +552,38 @@ export default function MapBoard() {
           )}
 
           {/* Saved drawings (freehand + arrows) */}
-          {drawings.map((d, i) =>
+          {drawings.map((d) =>
             d.type === "arrow" ? (
               <Arrow
-                key={`draw-${i}`}
+                key={d.id}
                 points={d.points}
                 stroke={d.color}
                 fill={d.color}
-                strokeWidth={3}
+                strokeWidth={d.id === selectedDrawingId ? 5 : 3}
                 pointerLength={12}
                 pointerWidth={10}
-                opacity={0.85}
+                opacity={d.id === selectedDrawingId ? 1 : 0.85}
+                onClick={(e) => {
+                  e.cancelBubble = true;
+                  selectItem(null);
+                  setSelectedDrawing(d.id);
+                }}
               />
             ) : (
               <Line
-                key={`draw-${i}`}
+                key={d.id}
                 points={d.points}
                 stroke={d.color}
-                strokeWidth={3}
+                strokeWidth={d.id === selectedDrawingId ? 5 : 3}
                 tension={0.3}
                 lineCap="round"
                 lineJoin="round"
-                opacity={0.8}
+                opacity={d.id === selectedDrawingId ? 1 : 0.8}
+                onClick={(e) => {
+                  e.cancelBubble = true;
+                  selectItem(null);
+                  setSelectedDrawing(d.id);
+                }}
               />
             )
           )}

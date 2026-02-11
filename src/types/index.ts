@@ -17,6 +17,7 @@ export interface BoardItem {
 
 /** A drawing annotation on the board */
 export interface DrawingItem {
+  id: string;
   type: "freehand" | "arrow";
   points: number[];
   color: string;

@@ -29,6 +29,11 @@
     - [x] Keyboard shortcuts (V/D/A/Ctrl+Z/Space/Del/Esc)
     - [x] resetView computed from stageSize (no magic numbers)
     - [x] Push to GitHub (MonsieurNikko/VLTactic)
+- [x] Phase 1.6: UX & Drawing Control (v0.4)
+    - [x] Canvas agent icons (CDN avatar render in map)
+    - [x] Drawing selection + delete
+    - [x] Redo drawings (Ctrl+Y / Ctrl+Shift+Z + toolbar button)
+    - [x] Auto-cancel pending agent when switching to Draw/Arrow
 - [ ] Phase 2: "Tree System" & Data Logic
     - [ ] Define Map Zones (Proof of Concept for Ascent)
     - [ ] Implement `getZoneFromCoordinates(x, y)`

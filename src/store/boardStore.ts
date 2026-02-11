@@ -14,8 +14,10 @@ interface BoardStore {
   selectedItemId: string | null;
   activeTool: "select" | "draw" | "arrow";
   drawings: DrawingItem[];
+  redoDrawings: DrawingItem[];
   drawColor: string;
   stageSize: { width: number; height: number };
+  selectedDrawingId: string | null;
 
   // Pending item to be placed via click on map
   pendingAgent: {
@@ -35,16 +37,21 @@ interface BoardStore {
   setViewport: (viewport: Partial<ViewportState>) => void;
   setActiveTool: (tool: BoardStore["activeTool"]) => void;
   setPendingAgent: (agent: BoardStore["pendingAgent"]) => void;
-  addDrawing: (drawing: DrawingItem) => void;
+  addDrawing: (drawing: Omit<DrawingItem, "id">) => void;
   undoDrawing: () => void;
+  redoDrawing: () => void;
+  removeDrawing: (id: string) => void;
   clearDrawings: () => void;
   setDrawColor: (color: string) => void;
   setStageSize: (size: { width: number; height: number }) => void;
   resetView: () => void;
+  setSelectedDrawing: (id: string | null) => void;
 }
 
 let _nextId = 1;
 const genId = () => `item-${_nextId++}`;
+let _nextDrawingId = 1;
+const genDrawingId = () => `draw-${_nextDrawingId++}`;
 
 export const DRAW_COLORS = [
   { color: "#FFD700", name: "Yellow" },
@@ -64,8 +71,10 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
   activeTool: "select",
   pendingAgent: null,
   drawings: [],
+  redoDrawings: [],
   drawColor: "#FFD700",
   stageSize: { width: 800, height: 600 },
+  selectedDrawingId: null,
 
   // ── Actions ───────────────────────────────────────────────
   addItem: (item) =>
@@ -84,31 +93,82 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
       selectedItemId: s.selectedItemId === id ? null : s.selectedItemId,
     })),
 
-  selectItem: (id) => set({ selectedItemId: id }),
+  selectItem: (id) => set({ selectedItemId: id, selectedDrawingId: null }),
 
-  clearBoard: () => set({ items: [], selectedItemId: null, drawings: [] }),
+  clearBoard: () =>
+    set({
+      items: [],
+      selectedItemId: null,
+      drawings: [],
+      redoDrawings: [],
+      selectedDrawingId: null,
+    }),
 
   setSelectedMap: (mapName) =>
-    set({ selectedMap: mapName, items: [], selectedItemId: null, drawings: [] }),
+    set({
+      selectedMap: mapName,
+      items: [],
+      selectedItemId: null,
+      drawings: [],
+      redoDrawings: [],
+      selectedDrawingId: null,
+    }),
 
   setViewport: (partial) =>
     set((s) => ({ viewport: { ...s.viewport, ...partial } })),
 
-  setActiveTool: (tool) => set({ activeTool: tool }),
+  setActiveTool: (tool) =>
+    set((s) => ({
+      activeTool: tool,
+      pendingAgent: tool === "select" ? s.pendingAgent : null,
+    })),
 
-  setPendingAgent: (agent) => set({ pendingAgent: agent }),
+  setPendingAgent: (agent) =>
+    set((s) => ({
+      pendingAgent: agent,
+      activeTool: agent ? "select" : s.activeTool,
+    })),
 
   addDrawing: (drawing) =>
-    set((s) => ({ drawings: [...s.drawings, drawing] })),
+    set((s) => ({
+      drawings: [...s.drawings, { ...drawing, id: genDrawingId() }],
+      redoDrawings: [],
+    })),
 
   undoDrawing: () =>
-    set((s) => ({ drawings: s.drawings.slice(0, -1) })),
+    set((s) => {
+      if (s.drawings.length === 0) return s;
+      const last = s.drawings[s.drawings.length - 1];
+      return {
+        drawings: s.drawings.slice(0, -1),
+        redoDrawings: [...s.redoDrawings, last],
+        selectedDrawingId: s.selectedDrawingId === last.id ? null : s.selectedDrawingId,
+      };
+    }),
 
-  clearDrawings: () => set({ drawings: [] }),
+  redoDrawing: () =>
+    set((s) => {
+      if (s.redoDrawings.length === 0) return s;
+      const next = s.redoDrawings[s.redoDrawings.length - 1];
+      return {
+        drawings: [...s.drawings, next],
+        redoDrawings: s.redoDrawings.slice(0, -1),
+      };
+    }),
+
+  removeDrawing: (id) =>
+    set((s) => ({
+      drawings: s.drawings.filter((d) => d.id !== id),
+      selectedDrawingId: s.selectedDrawingId === id ? null : s.selectedDrawingId,
+    })),
+
+  clearDrawings: () => set({ drawings: [], redoDrawings: [], selectedDrawingId: null }),
 
   setDrawColor: (color) => set({ drawColor: color }),
 
   setStageSize: (size) => set({ stageSize: size }),
+
+  setSelectedDrawing: (id) => set({ selectedDrawingId: id }),
 
   resetView: () => {
     const { stageSize, selectedMap } = get();

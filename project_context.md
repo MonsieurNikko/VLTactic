@@ -64,13 +64,15 @@ Instead of AI analyzing an image, the Board knows where things are.
     index.ts         # BoardItem, AgentDef, MapDef, DrawingItem, PendingAgent
 ```
 
-### Current Features (v0.3)
+### Current Features (v0.4)
 - Place agents + specific abilities on map
 - Freehand drawing (6 colors) + Arrow tool
-- Undo drawings (Ctrl+Z)
+- Undo/Redo drawings (Ctrl+Z / Ctrl+Y)
+- Drawing selection + delete (click drawing, Delete/Backspace)
 - Zoom/Pan (scroll, Space+drag, right-click, middle-click)
 - Keyboard shortcuts: V/D/A/Ctrl+Z/Space/Del/Esc
 - Real CDN maps & agent icons from valorant-api.com
+- Agent CDN icons rendered on canvas
 - Mobile responsive (sidebar toggle)
 
 ### NOT YET implemented

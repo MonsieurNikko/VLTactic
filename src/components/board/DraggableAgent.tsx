@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useCallback, useRef } from "react";
-import { Group, Circle, Text, Ring } from "react-konva";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Group, Circle, Text, Ring, Image as KonvaImage } from "react-konva";
 import Konva from "konva";
 import { BoardItem } from "@/types";
 import { useBoardStore } from "@/store/boardStore";
+import { AGENT_MAP } from "@/data/agents";
 
 // ============================================================
 // DraggableAgent — A single movable agent on the board
@@ -21,6 +22,25 @@ const AGENT_RADIUS = 22;
 export function DraggableAgent({ item, isSelected }: Props) {
   const { updateItemPosition, selectItem } = useBoardStore();
   const groupRef = useRef<Konva.Group>(null);
+  const [iconImage, setIconImage] = useState<HTMLImageElement | null>(null);
+
+  const iconUrl = AGENT_MAP.get(item.agentName)?.iconUrl;
+
+  useEffect(() => {
+    if (!iconUrl) {
+      setIconImage(null);
+      return;
+    }
+    const img = new window.Image();
+    img.crossOrigin = "anonymous";
+    img.src = iconUrl;
+    img.onload = () => setIconImage(img);
+    img.onerror = () => setIconImage(null);
+    return () => {
+      img.onload = null;
+      img.onerror = null;
+    };
+  }, [iconUrl]);
 
   const handleDragEnd = useCallback(
     (e: Konva.KonvaEventObject<DragEvent>) => {
@@ -37,7 +57,7 @@ export function DraggableAgent({ item, isSelected }: Props) {
     [item.id, selectItem]
   );
 
-  // Get initials (first 2-3 chars)
+  // Get initials (first 2-3 chars) for fallback
   const initials = item.agentName
     .replace(/[^A-Za-z/]/g, "")
     .slice(0, 3)
@@ -107,30 +127,49 @@ export function DraggableAgent({ item, isSelected }: Props) {
         shadowOpacity={0.4}
       />
 
+      {/* Agent icon (clipped to circle) */}
+      {iconImage ? (
+        <Group
+          clipFunc={(ctx) => {
+            ctx.beginPath();
+            ctx.arc(0, 0, AGENT_RADIUS - 2, 0, Math.PI * 2);
+            ctx.closePath();
+          }}
+        >
+          <KonvaImage
+            image={iconImage}
+            x={-(AGENT_RADIUS - 2)}
+            y={-(AGENT_RADIUS - 2)}
+            width={(AGENT_RADIUS - 2) * 2}
+            height={(AGENT_RADIUS - 2) * 2}
+            opacity={0.95}
+          />
+        </Group>
+      ) : (
+        <Text
+          text={initials}
+          fontSize={12}
+          fontFamily="'Inter', 'Segoe UI', sans-serif"
+          fontStyle="bold"
+          fill="#fff"
+          align="center"
+          verticalAlign="middle"
+          width={AGENT_RADIUS * 2}
+          height={AGENT_RADIUS * 2}
+          offsetX={AGENT_RADIUS}
+          offsetY={AGENT_RADIUS}
+          shadowColor="black"
+          shadowBlur={2}
+          shadowOpacity={0.5}
+        />
+      )}
+
       {/* Inner highlight (pseudo-gradient) */}
       <Circle
         radius={AGENT_RADIUS * 0.55}
         fill="white"
         opacity={0.08}
         offsetY={-3}
-      />
-
-      {/* Agent initials */}
-      <Text
-        text={initials}
-        fontSize={12}
-        fontFamily="'Inter', 'Segoe UI', sans-serif"
-        fontStyle="bold"
-        fill="#fff"
-        align="center"
-        verticalAlign="middle"
-        width={AGENT_RADIUS * 2}
-        height={AGENT_RADIUS * 2}
-        offsetX={AGENT_RADIUS}
-        offsetY={AGENT_RADIUS}
-        shadowColor="black"
-        shadowBlur={2}
-        shadowOpacity={0.5}
       />
 
       {/* Team indicator dot */}
