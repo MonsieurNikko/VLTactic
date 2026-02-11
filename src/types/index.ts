@@ -45,6 +45,9 @@ export interface MapDef {
   /** Canvas dimensions for the map coordinate system */
   width: number;
   height: number;
+  /** Rotation in degrees (CW) to orient map vertically (ATK bottom → DEF top).
+   *  Applied to the KonvaImage background only. 0 or undefined = no rotation. */
+  rotation?: number;
 }
 
 /** Board camera / viewport state */

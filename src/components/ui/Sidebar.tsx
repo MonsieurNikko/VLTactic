@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { AGENTS, ROLE_COLORS } from "@/data/agents";
 import { useBoardStore } from "@/store/boardStore";
-import { getAbilityType, UTIL_TYPE_COLORS } from "@/data/abilities";
+import { getAbilityType, getAbilityIconURL, UTIL_TYPE_COLORS } from "@/data/abilities";
 import { CDNImage } from "@/components/ui/CDNImage";
 import type { AgentDef } from "@/types";
 
@@ -204,6 +204,7 @@ export default function Sidebar() {
                             {/* Abilities list */}
                             {agent.abilities.map((ability) => {
                               const utilType = getAbilityType(ability);
+                              const abilityIconUrl = getAbilityIconURL(agent.name, ability);
                               const isAbilityPending =
                                 pendingAgent?.agentName === agent.name &&
                                 pendingAgent?.utilityName === ability &&
@@ -222,14 +223,25 @@ export default function Sidebar() {
                                   }`}
                                   title={`Place ${ability} (${utilType})`}
                                 >
-                                  <span
-                                    className="w-2 h-2 rounded-sm shrink-0"
-                                    style={{
-                                      backgroundColor:
-                                        UTIL_TYPE_COLORS[utilType] ??
-                                        UTIL_TYPE_COLORS.default,
-                                    }}
-                                  />
+                                  {/* Ability icon from CDN, fallback to colored dot */}
+                                  {abilityIconUrl ? (
+                                    <CDNImage
+                                      src={abilityIconUrl}
+                                      alt={ability}
+                                      width={18}
+                                      height={18}
+                                      className="w-4.5 h-4.5 shrink-0 object-contain brightness-90 invert"
+                                    />
+                                  ) : (
+                                    <span
+                                      className="w-4 h-4 rounded-sm shrink-0 flex items-center justify-center"
+                                      style={{
+                                        backgroundColor:
+                                          UTIL_TYPE_COLORS[utilType] ??
+                                          UTIL_TYPE_COLORS.default,
+                                      }}
+                                    />
+                                  )}
                                   <span className="truncate">{ability}</span>
                                   <span className="ml-auto text-[9px] text-neutral-600">
                                     {utilType}

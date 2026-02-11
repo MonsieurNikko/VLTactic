@@ -539,8 +539,11 @@ export default function MapBoard({ stageRefFromParent }: MapBoardProps) {
           {mapImage && !mapLoadError ? (
             <KonvaImage
               image={mapImage}
-              x={0}
-              y={0}
+              x={mapDef.rotation ? mapDef.width / 2 : 0}
+              y={mapDef.rotation ? mapDef.height / 2 : 0}
+              offsetX={mapDef.rotation ? mapDef.width / 2 : 0}
+              offsetY={mapDef.rotation ? mapDef.height / 2 : 0}
+              rotation={mapDef.rotation ?? 0}
               width={mapDef.width}
               height={mapDef.height}
               name="map-image"
