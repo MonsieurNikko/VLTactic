@@ -1,15 +1,15 @@
 "use client";
 
-import React, { useCallback, useRef } from "react";
-import { Group, Circle, Text, Ring } from "react-konva";
+import React, { useCallback, useRef, useState, useEffect } from "react";
+import { Group, Circle, Ring, Image as KonvaImage } from "react-konva";
 import Konva from "konva";
 import { BoardItem } from "@/types";
 import { useBoardStore } from "@/store/boardStore";
-import { getAbilityType, UTILITY_STYLES } from "@/data/abilities";
+import { getAbilityType, UTILITY_STYLES, getAbilityIconURL } from "@/data/abilities";
 
 // ============================================================
 // UtilityIcon — A utility/ability placed on the board
-// Uses centralized ability classification for styling
+// Uses real Valorant API ability icons from CDN
 // ============================================================
 
 interface Props {
@@ -22,6 +22,37 @@ const UTIL_RADIUS = 14;
 export function UtilityIcon({ item, isSelected }: Props) {
   const { updateItemPosition, selectItem } = useBoardStore();
   const groupRef = useRef<Konva.Group>(null);
+  const [abilityImage, setAbilityImage] = useState<HTMLImageElement | null>(null);
+
+  // Load real ability icon from Valorant API CDN
+  useEffect(() => {
+    let mounted = true;
+    
+    if (!item.agentName || !item.utilityName) {
+      setAbilityImage(null);
+      return;
+    }
+
+    const iconUrl = getAbilityIconURL(item.agentName, item.utilityName);
+    if (!iconUrl) {
+      setAbilityImage(null);
+      return;
+    }
+
+    const img = new window.Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      if (mounted) setAbilityImage(img);
+    };
+    img.onerror = () => {
+      if (mounted) setAbilityImage(null);
+    };
+    img.src = iconUrl;
+
+    return () => {
+      mounted = false;
+    };
+  }, [item.agentName, item.utilityName]);
 
   const handleDragEnd = useCallback(
     (e: Konva.KonvaEventObject<DragEvent>) => {
@@ -77,7 +108,7 @@ export function UtilityIcon({ item, isSelected }: Props) {
         opacity={0.7}
       />
 
-      {/* Main circle */}
+      {/* Main circle backdrop */}
       <Circle
         radius={UTIL_RADIUS}
         fill={style.fillColor}
@@ -87,29 +118,30 @@ export function UtilityIcon({ item, isSelected }: Props) {
         opacity={0.9}
       />
 
-      {/* Symbol */}
-      <Text
-        text={style.symbol}
-        fontSize={14}
-        fill="#fff"
-        align="center"
-        verticalAlign="middle"
-        width={UTIL_RADIUS * 2}
-        height={UTIL_RADIUS * 2}
-        offsetX={UTIL_RADIUS}
-        offsetY={UTIL_RADIUS}
-      />
+      {/* Real ability icon từ API hoặc fallback emoji */}
+      {abilityImage ? (
+        <KonvaImage
+          image={abilityImage}
+          width={UTIL_RADIUS * 1.4}
+          height={UTIL_RADIUS * 1.4}
+          offsetX={UTIL_RADIUS * 0.7}
+          offsetY={UTIL_RADIUS * 0.7}
+          opacity={0.95}
+        />
+      ) : (
+        <Circle
+          radius={UTIL_RADIUS * 0.5}
+          fill={style.fillColor}
+          opacity={0.3}
+        />
+      )}
 
       {/* Label below */}
-      <Text
-        text={`${item.agentName}\n${item.utilityName ?? utilType}`}
-        fontSize={8}
-        fill="#ccc"
-        align="center"
-        y={UTIL_RADIUS + 4}
-        width={60}
-        offsetX={30}
-        lineHeight={1.2}
+      <Circle
+        radius={2}
+        fill="#fff"
+        opacity={0.5}
+        y={UTIL_RADIUS + 2}
       />
     </Group>
   );

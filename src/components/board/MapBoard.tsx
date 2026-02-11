@@ -7,19 +7,27 @@ import { useBoardStore } from "@/store/boardStore";
 import { MAPS } from "@/data/maps";
 import { DraggableAgent } from "./DraggableAgent";
 import { UtilityIcon } from "./UtilityIcon";
+import { setupAutoSave } from "@/utils/localStorage";
 
 // ============================================================
 // MapBoard — Main Konva Canvas component
 // Features: zoom/pan, map background, draggable agents,
 //           space+drag pan, center-on-load, drawing + arrow tools
+//           auto-save to localStorage every 5s
 // ============================================================
 
 const MIN_SCALE = 0.2;
 const MAX_SCALE = 5;
 const SCALE_BY = 1.08;
 
-export default function MapBoard() {
-  const stageRef = useRef<Konva.Stage>(null);
+interface MapBoardProps {
+  stageRefFromParent?: React.RefObject<Konva.Stage | null>;
+}
+
+export default function MapBoard({ stageRefFromParent }: MapBoardProps) {
+  const localStageRef = useRef<Konva.Stage>(null);
+  const stageRef = (stageRefFromParent || localStageRef) as React.RefObject<Konva.Stage>;
+  
   const {
     items,
     selectedMap,
@@ -42,6 +50,7 @@ export default function MapBoard() {
     setStageSize,
     setActiveTool,
     setSelectedDrawing,
+    loadFromLocalStorage,
   } = useBoardStore();
 
   const [stageSize, setStageSizeLocal] = useState({ width: 800, height: 600 });
@@ -51,6 +60,7 @@ export default function MapBoard() {
   const containerRef = useRef<HTMLDivElement>(null);
   const spaceHeld = useRef(false);
   const hasInitialCentered = useRef(false);
+  const hasLoadedFromStorage = useRef(false);
 
   // Freehand drawing state (local for in-progress stroke only)
   const [isDrawing, setIsDrawing] = useState(false);
@@ -65,6 +75,26 @@ export default function MapBoard() {
   const mapLoading = !mapImage && !mapLoadError;
 
   const mapDef = MAPS.find((m) => m.name === selectedMap) ?? MAPS[0];
+
+  // ── Load from localStorage on mount ───────────────────────
+  useEffect(() => {
+    if (!hasLoadedFromStorage.current) {
+      hasLoadedFromStorage.current = true;
+      loadFromLocalStorage();
+    }
+  }, [loadFromLocalStorage]);
+
+  // ── Auto-save setup  ───────────────────────────────────────
+  useEffect(() => {
+    const getState = () => ({
+      items: useBoardStore.getState().items,
+      drawings: useBoardStore.getState().drawings,
+      selectedMap: useBoardStore.getState().selectedMap,
+    });
+
+    const cleanup = setupAutoSave(getState);
+    return cleanup;
+  }, []);
 
   // ── Center & fit map to stage ─────────────────────────────
   const centerMap = useCallback(
@@ -118,18 +148,24 @@ export default function MapBoard() {
   }
 
   useEffect(() => {
+    let mounted = true;
     const img = new window.Image();
     img.crossOrigin = "anonymous";
     img.src = mapDef.imagePath;
     img.onload = () => {
-      setMapImage(img);
-      setMapLoadError(false);
+      if (mounted) {
+        setMapImage(img);
+        setMapLoadError(false);
+      }
     };
     img.onerror = () => {
-      setMapLoadError(true);
-      setMapImage(null);
+      if (mounted) {
+        setMapLoadError(true);
+        setMapImage(null);
+      }
     };
     return () => {
+      mounted = false;
       img.onload = null;
       img.onerror = null;
     };

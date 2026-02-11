@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { AGENTS, ROLE_COLORS } from "@/data/agents";
 import { useBoardStore } from "@/store/boardStore";
 import { getAbilityType, UTIL_TYPE_COLORS } from "@/data/abilities";
+import { CDNImage } from "@/components/ui/CDNImage";
 import type { AgentDef } from "@/types";
 
 // ============================================================
@@ -158,11 +159,12 @@ export default function Sidebar() {
                         >
                           {/* Agent icon from CDN */}
                           {agent.iconUrl ? (
-                            <img
+                            <CDNImage
                               src={agent.iconUrl}
                               alt={agent.name}
+                              width={24}
+                              height={24}
                               className="w-6 h-6 rounded-full shrink-0 bg-neutral-700 object-cover"
-                              loading="lazy"
                             />
                           ) : (
                             <span

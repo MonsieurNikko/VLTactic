@@ -29,8 +29,12 @@ export interface AgentDef {
   role: "Duelist" | "Controller" | "Initiator" | "Sentinel";
   color: string; // brand color for the agent
   iconUrl?: string; // CDN display icon URL
+  uuid?: string; // Valorant API UUID for ability icon fetching
   abilities: string[];
 }
+
+/** Ability icon slot type from Valorant API */
+export type AbilitySlot = "ability1" | "ability2" | "grenade" | "ultimate" | "passive";
 
 /** Definition of a Valorant Map */
 export interface MapDef {

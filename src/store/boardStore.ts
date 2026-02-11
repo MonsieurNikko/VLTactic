@@ -1,9 +1,11 @@
 import { create } from "zustand";
 import { BoardItem, ViewportState, DrawingItem } from "@/types";
 import { DEFAULT_MAP, MAPS } from "@/data/maps";
+import { loadBoardState, saveBoardState } from "@/utils/localStorage";
 
 // ============================================================
 // Zustand Store — Single source of truth for the board state
+// Now with save/load persistence support
 // ============================================================
 
 interface BoardStore {
@@ -46,6 +48,10 @@ interface BoardStore {
   setStageSize: (size: { width: number; height: number }) => void;
   resetView: () => void;
   setSelectedDrawing: (id: string | null) => void;
+  
+  // Save/Load actions (NEW)
+  saveToLocalStorage: () => void;
+  loadFromLocalStorage: () => boolean;
 }
 
 let _nextId = 1;
@@ -180,5 +186,26 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
     const x = (stageSize.width - mapDef.width * scale) / 2;
     const y = (stageSize.height - mapDef.height * scale) / 2;
     set({ viewport: { scale, x, y } });
+  },
+
+  // ── Save/Load (NEW) ───────────────────────────────────────
+  saveToLocalStorage: () => {
+    const { items, drawings, selectedMap } = get();
+    saveBoardState(items, drawings, selectedMap);
+  },
+
+  loadFromLocalStorage: () => {
+    const saved = loadBoardState();
+    if (!saved) return false;
+    
+    set({
+      items: saved.items,
+      drawings: saved.drawings,
+      selectedMap: saved.selectedMap,
+      redoDrawings: [],
+      selectedItemId: null,
+      selectedDrawingId: null,
+    });
+    return true;
   },
 }));

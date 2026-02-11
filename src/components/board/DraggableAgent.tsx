@@ -27,20 +27,22 @@ export function DraggableAgent({ item, isSelected }: Props) {
   const iconUrl = AGENT_MAP.get(item.agentName)?.iconUrl;
 
   useEffect(() => {
-    if (!iconUrl) {
-      setIconImage(null);
-      return;
-    }
+    if (!iconUrl) return;
+    
+    let mounted = true;
     const img = new window.Image();
     img.crossOrigin = "anonymous";
     img.src = iconUrl;
-    img.onload = () => setIconImage(img);
-    img.onerror = () => setIconImage(null);
-    return () => {
-      img.onload = null;
-      img.onerror = null;
+    img.onload = () => {
+      if (mounted) setIconImage(img);
     };
-  }, [iconUrl]);
+    img.onerror = () => {
+      if (mounted) setIconImage(null);
+    };
+    return () => {
+      mounted = false;
+    };
+  }, [item.agentName]);
 
   const handleDragEnd = useCallback(
     (e: Konva.KonvaEventObject<DragEvent>) => {

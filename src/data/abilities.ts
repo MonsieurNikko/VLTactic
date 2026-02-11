@@ -1,7 +1,112 @@
 // ============================================================
 // Ability classification for tactical board utility icons
-// Maps ability names → tactical category for icon styling
+// Maps ability names → tactical category + CDN icon URLs
 // ============================================================
+
+import { AGENT_MAP } from "./agents";
+
+// Ability → API slot mapping (from Valorant API structure)
+const ABILITY_SLOT_MAP: Record<string, string> = {
+  // Slots từ abilities[] array trong valorant-api.com response:
+  // ability1, ability2, grenade, ultimate, passive
+  
+  // Map ability names → slots (lowercase for URL construction)
+  // NOTE: Some abilities không có icon (như passive hoặc signature traits)
+  
+  // Jett
+  "Cloudburst": "grenade", "Updraft": "ability1", "Tailwind": "ability2", "Blade Storm": "ultimate",
+  
+  // Reyna
+  "Leer": "grenade", "Devour": "ability1", "Dismiss": "ability2", "Empress": "ultimate",
+  
+  // Phoenix
+  "Blaze": "grenade", "Curveball": "ability2", "Hot Hands": "ability1", "Run It Back": "ultimate",
+  
+  // Raze
+  "Boom Bot": "grenade", "Blast Pack": "ability1", "Paint Shells": "ability2", "Showstopper": "ultimate",
+  
+  // Yoru  
+  "Fakeout": "grenade", "Blindside": "ability1", "Gatecrash": "ability2", "Dimensional Drift": "ultimate",
+  
+  // Neon
+  "Fast Lane": "grenade", "Relay Bolt": "ability1", "High Gear": "ability2", "Overdrive": "ultimate",
+  
+  // Iso
+  "Undercut": "ability1", "Double Tap": "ability2", "Contingency": "grenade", "Kill Contract": "ultimate",
+  
+  // Waylay
+  "Saturate": "grenade", "Lightspeed": "ability1", "Refract": "ability2", "Convergent Paths": "ultimate",
+  
+  // Brimstone
+  "Stim Beacon": "grenade", "Incendiary": "ability1", "Sky Smoke": "ability2", "Orbital Strike": "ultimate",
+  
+  // Omen
+  "Shrouded Step": "grenade", "Paranoia": "ability1", "Dark Cover": "ability2", "From the Shadows": "ultimate",
+  
+  // Viper
+  "Snake Bite": "grenade", "Poison Cloud": "ability1", "Toxic Screen": "ability2", "Viper's Pit": "ultimate",
+  
+  // Astra
+  "Gravity Well": "grenade", "Nova Pulse": "ability1", "Nebula": "ability2", "Cosmic Divide": "ultimate",
+  
+  // Harbor
+  "Storm Surge": "grenade", "Cove": "ability2", "High Tide": "ability1", "Reckoning": "ultimate",
+  
+  // Clove
+  "Pick-Me-Up": "grenade", "Meddle": "ability1", "Ruse": "ability2", "Not Dead Yet": "ultimate",
+  
+  // Sova
+  "Owl Drone": "grenade", "Shock Bolt": "ability1", "Recon Bolt": "ability2", "Hunter's Fury": "ultimate",
+  
+  // Breach
+  "Aftershock": "grenade", "Flashpoint": "ability1", "Fault Line": "ability2", "Rolling Thunder": "ultimate",
+  
+  // Skye
+  "Trailblazer": "ability1", "Guiding Light": "ability2", "Regrowth": "grenade", "Seekers": "ultimate",
+  
+  // KAY/O
+  "FRAG/ment": "grenade", "FLASH/drive": "ability1", "ZERO/point": "ability2", "NULL/cmd": "ultimate",
+  
+  // Fade
+  "Prowler": "grenade", "Seize": "ability1", "Haunt": "ability2", "Nightfall": "ultimate",
+  
+  // Gekko
+  "Mosh Pit": "grenade", "Wingman": "ability1", "Dizzy": "ability2", "Thrash": "ultimate",
+  
+  // Tejo
+  "Special Delivery": "ability1", "Guided Salvo": "ability2", "Stealth Drone": "grenade", "Armageddon": "ultimate",
+  
+  // Sage
+  "Barrier Orb": "grenade", "Slow Orb": "ability1", "Healing Orb": "ability2", "Resurrection": "ultimate",
+  
+  // Cypher
+  "Trapwire": "grenade", "Cyber Cage": "ability1", "Spycam": "ability2", "Neural Theft": "ultimate",
+  
+  // Killjoy
+  "Nanoswarm": "grenade", "Alarmbot": "ability1", "Turret": "ability2", "Lockdown": "ultimate",
+  
+  // Chamber
+  "Trademark": "grenade", "Headhunter": "ability1", "Rendezvous": "ability2", "Tour De Force": "ultimate",
+  
+  // Deadlock
+  "GravNet": "ability2", "Sonic Sensor": "ability1", "Barrier Mesh": "grenade", "Annihilation": "ultimate",
+  
+  // Vyse
+  "Shear": "ability1", "Arc Rose": "ability2", "Razorvine": "grenade", "Steel Garden": "ultimate",
+  
+  // Veto
+  "Chokehold": "ability1", "Interceptor": "ability2", "Crosscut": "grenade", "Evolution": "ultimate",
+};
+
+export function getAbilityIconURL(agentName: string, abilityName: string): string | null {
+  const agent = AGENT_MAP.get(agentName);
+  if (!agent || !agent.uuid) return null;
+  
+  const slot = ABILITY_SLOT_MAP[abilityName];
+  if (!slot) return null;
+  
+  return `https://media.valorant-api.com/agents/${agent.uuid}/abilities/${slot}/displayicon.png`;
+}
 
 export const ABILITY_TYPE_MAP: Record<string, string> = {
   // ── Smoke (vision blocking) ───────────────────────────────
