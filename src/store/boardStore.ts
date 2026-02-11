@@ -192,10 +192,51 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
     set({ viewport: { scale, x, y } });
   },
 
-  rotateMap: () =>
-    set((s) => ({
+  rotateMap: () => {
+    const s = get();
+    const mapDef = MAPS.find((m) => m.name === s.selectedMap) ?? MAPS[0];
+    const cx = mapDef.width / 2;
+    const cy = mapDef.height / 2;
+
+    // Rotate point 90° clockwise around center
+    const rotate90CW = (x: number, y: number) => ({
+      x: cx + (y - cy),
+      y: cy - (x - cx),
+    });
+
+    // Rotate all items
+    const rotatedItems = s.items.map((item) => {
+      const { x, y } = rotate90CW(item.x, item.y);
+      return { ...item, x, y };
+    });
+
+    // Rotate all drawings (points array: [x1,y1,x2,y2,...])
+    const rotatedDrawings = s.drawings.map((drawing) => {
+      const newPoints: number[] = [];
+      for (let i = 0; i < drawing.points.length; i += 2) {
+        const { x, y } = rotate90CW(drawing.points[i], drawing.points[i + 1]);
+        newPoints.push(x, y);
+      }
+      return { ...drawing, points: newPoints };
+    });
+
+    // Also rotate redo stack
+    const rotatedRedoDrawings = s.redoDrawings.map((drawing) => {
+      const newPoints: number[] = [];
+      for (let i = 0; i < drawing.points.length; i += 2) {
+        const { x, y } = rotate90CW(drawing.points[i], drawing.points[i + 1]);
+        newPoints.push(x, y);
+      }
+      return { ...drawing, points: newPoints };
+    });
+
+    set({
       mapRotationOffset: (s.mapRotationOffset + 90) % 360,
-    })),
+      items: rotatedItems,
+      drawings: rotatedDrawings,
+      redoDrawings: rotatedRedoDrawings,
+    });
+  },
 
   // ── Save/Load (NEW) ───────────────────────────────────────
   saveToLocalStorage: () => {
