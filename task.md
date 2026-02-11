@@ -34,6 +34,15 @@
     - [x] Drawing selection + delete
     - [x] Redo drawings (Ctrl+Y / Ctrl+Shift+Z + toolbar button)
     - [x] Auto-cancel pending agent when switching to Draw/Arrow
+- [x] Phase 1.7: Polish & Data Integrity (v0.5)
+    - [x] Save/Load system (localStorage, auto-save 5s)
+    - [x] PNG Export (2x resolution + clipboard)
+    - [x] Real ability icons on canvas (CDN via getAbilityIconURL)
+    - [x] Real ability icons in Sidebar (CDNImage 18×18 + invert)
+    - [x] Map rotation for 6 horizontal maps (Bind, Breeze, Fracture, Pearl, Lotus, Sunset)
+    - [x] Rotation direction verified via API spawn coordinate analysis (-90° CCW)
+    - [x] Added Corrode map (new competitive map)
+    - [x] Bug fixes: SSR guards, TypeScript ref casts, mounted flags
 - [ ] Phase 2: "Tree System" & Data Logic
     - [ ] Define Map Zones (Proof of Concept for Ascent)
     - [ ] Implement `getZoneFromCoordinates(x, y)`
