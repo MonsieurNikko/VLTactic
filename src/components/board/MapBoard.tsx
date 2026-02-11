@@ -31,6 +31,7 @@ export default function MapBoard({ stageRefFromParent }: MapBoardProps) {
   const {
     items,
     selectedMap,
+    mapRotationOffset,
     viewport,
     selectedItemId,
     pendingAgent,
@@ -154,15 +155,16 @@ export default function MapBoard({ stageRefFromParent }: MapBoardProps) {
     img.src = mapDef.imagePath;
     img.onload = () => {
       if (!mounted) return;
-      const rotation = mapDef.rotation ?? 0;
-      if (rotation !== 0) {
-        // Pre-rotate maps via offscreen canvas for standard tactical orientation
+      // Combine base rotation from map definition with user's rotation offset
+      const totalRotation = ((mapDef.rotation ?? 0) + mapRotationOffset) % 360;
+      if (totalRotation !== 0) {
+        // Pre-rotate maps via offscreen canvas
         const canvas = document.createElement("canvas");
         canvas.width = img.width;
         canvas.height = img.height;
         const ctx = canvas.getContext("2d")!;
         ctx.translate(canvas.width / 2, canvas.height / 2);
-        ctx.rotate((rotation * Math.PI) / 180);
+        ctx.rotate((totalRotation * Math.PI) / 180);
         ctx.drawImage(img, -img.width / 2, -img.height / 2);
         const rotatedImg = new window.Image();
         rotatedImg.src = canvas.toDataURL();
@@ -188,7 +190,7 @@ export default function MapBoard({ stageRefFromParent }: MapBoardProps) {
       img.onload = null;
       img.onerror = null;
     };
-  }, [mapDef.imagePath, mapDef.rotation]);
+  }, [mapDef.imagePath, mapDef.rotation, mapRotationOffset]);
 
   // ── Key handlers ──────────────────────────────────────────
   useEffect(() => {

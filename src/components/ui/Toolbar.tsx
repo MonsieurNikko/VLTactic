@@ -28,6 +28,7 @@ export default function Toolbar({ stageRef }: { stageRef?: React.RefObject<any> 
     resetView,
     saveToLocalStorage,
     loadFromLocalStorage,
+    rotateMap,
   } = useBoardStore();
 
   const [showSuccess, setShowSuccess] = useState(false);
@@ -123,6 +124,15 @@ export default function Toolbar({ stageRef }: { stageRef?: React.RefObject<any> 
           </option>
         ))}
       </select>
+
+      {/* Rotate map button */}
+      <button
+        onClick={rotateMap}
+        className="px-2 h-7 flex items-center justify-center rounded text-xs bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-white transition-colors shrink-0"
+        title="Rotate Map 90° (R)"
+      >
+        ↻ Rotate
+      </button>
 
       <div className="w-px h-6 bg-neutral-700 shrink-0" />
 

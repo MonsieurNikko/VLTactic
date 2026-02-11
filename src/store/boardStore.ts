@@ -12,6 +12,7 @@ interface BoardStore {
   // ── State ─────────────────────────────────────────────────
   items: BoardItem[];
   selectedMap: string;
+  mapRotationOffset: number; // Additional rotation offset (0, 90, 180, 270)
   viewport: ViewportState;
   selectedItemId: string | null;
   activeTool: "select" | "draw" | "arrow";
@@ -48,6 +49,7 @@ interface BoardStore {
   setStageSize: (size: { width: number; height: number }) => void;
   resetView: () => void;
   setSelectedDrawing: (id: string | null) => void;
+  rotateMap: () => void; // Rotate map by 90° clockwise
   
   // Save/Load actions (NEW)
   saveToLocalStorage: () => void;
@@ -72,6 +74,7 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
   // ── Initial State ─────────────────────────────────────────
   items: [],
   selectedMap: DEFAULT_MAP.name,
+  mapRotationOffset: 0,
   viewport: { scale: 1, x: 0, y: 0 },
   selectedItemId: null,
   activeTool: "select",
@@ -113,6 +116,7 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
   setSelectedMap: (mapName) =>
     set({
       selectedMap: mapName,
+      mapRotationOffset: 0, // Reset rotation on map change
       items: [],
       selectedItemId: null,
       drawings: [],
@@ -187,6 +191,11 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
     const y = (stageSize.height - mapDef.height * scale) / 2;
     set({ viewport: { scale, x, y } });
   },
+
+  rotateMap: () =>
+    set((s) => ({
+      mapRotationOffset: (s.mapRotationOffset + 90) % 360,
+    })),
 
   // ── Save/Load (NEW) ───────────────────────────────────────
   saveToLocalStorage: () => {
