@@ -56,3 +56,22 @@ export interface ViewportState {
   x: number;
   y: number;
 }
+/** Definition of a named zone on the map (for "Tree" logic) */
+export interface MapZone {
+  id: string;
+  name: string;
+  mapId: string;
+  type: "site" | "mid" | "spawn" | "long" | "short" | "general";
+  /** Polygon points relative to map 0,0 (top-left) */
+  points: { x: number; y: number }[];
+  color?: string; // Optional overlay color for debugging/training
+}
+
+/** State for a remote peer's cursor */
+export interface RemoteCursor {
+  x: number;
+  y: number;
+  color: string;
+  name?: string;
+  lastSeen: number;
+}

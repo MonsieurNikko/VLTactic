@@ -1,0 +1,117 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e6] [cursor=pointer]:
+    - button "Open Next.js Dev Tools" [ref=e7]:
+      - img [ref=e8]
+    - generic [ref=e11]:
+      - button "Open issues overlay" [ref=e12]:
+        - generic [ref=e13]:
+          - generic [ref=e14]: "0"
+          - generic [ref=e15]: "1"
+        - generic [ref=e16]: Issue
+      - button "Collapse issues badge" [ref=e17]:
+        - img [ref=e18]
+  - generic [ref=e20]:
+    - generic [ref=e21]:
+      - generic [ref=e22]:
+        - generic [ref=e23]: VL
+        - generic [ref=e24]: VLTactic
+      - combobox [ref=e26] [cursor=pointer]:
+        - option "Ascent" [selected]
+        - option "Bind"
+        - option "Haven"
+        - option "Split"
+        - option "Icebox"
+        - option "Breeze"
+        - option "Fracture"
+        - option "Pearl"
+        - option "Lotus"
+        - option "Sunset"
+        - option "Abyss"
+        - option "Corrode"
+      - button "↻ Rotate" [ref=e27]
+      - generic [ref=e29]:
+        - button "↖ Select" [ref=e30]
+        - button "✏ Draw" [ref=e31]
+        - button "➜ Arrow" [ref=e32]
+      - button "↩" [disabled] [ref=e34]
+      - button "↪" [disabled] [ref=e35]
+      - generic [ref=e37]:
+        - button "−" [ref=e38]
+        - button "100%" [ref=e39]
+        - button "+" [ref=e40]
+      - generic [ref=e41]:
+        - text: 0 items · 0 draws
+        - generic [ref=e42]: · just now
+      - button "💾 Save" [disabled] [ref=e44]
+      - button "📂 Load" [ref=e45]
+      - button "📸 Export" [disabled] [ref=e46]
+      - button "🗑 New" [disabled] [ref=e48]
+      - 'generic "Shortcuts: • V = Select · D = Draw · A = Arrow • Scroll = Zoom • Space + Drag = Pan • Right-click Drag = Pan • Delete/Backspace = Remove selected • Ctrl+Z = Undo · Ctrl+Y = Redo • Esc = Cancel placement • Auto-saves every 5 seconds" [ref=e49]': "?"
+    - generic [ref=e50]:
+      - generic [ref=e52]:
+        - generic [ref=e53]:
+          - heading "Agents & Abilities" [level=2] [ref=e54]
+          - textbox "Search agent..." [ref=e55]
+        - generic [ref=e56]:
+          - button "⚔ Attack" [ref=e57]
+          - button "🛡 Defend" [ref=e58]
+        - generic [ref=e59]:
+          - generic [ref=e60]:
+            - button "Duelist (8) ▾" [ref=e61]:
+              - text: Duelist
+              - generic [ref=e63]: (8)
+              - generic [ref=e64]: ▾
+            - generic [ref=e65]:
+              - button "Jett Jett ▸" [ref=e67]:
+                - img "Jett" [ref=e68]
+                - generic [ref=e69]: Jett
+                - generic [ref=e70]: ▸
+              - button "Reyna Reyna ▸" [ref=e72]:
+                - img "Reyna" [ref=e73]
+                - generic [ref=e74]: Reyna
+                - generic [ref=e75]: ▸
+              - button "Phoenix Phoenix ▸" [ref=e77]:
+                - img "Phoenix" [ref=e78]
+                - generic [ref=e79]: Phoenix
+                - generic [ref=e80]: ▸
+              - button "Raze Raze ▸" [ref=e82]:
+                - img "Raze" [ref=e83]
+                - generic [ref=e84]: Raze
+                - generic [ref=e85]: ▸
+              - button "Yoru Yoru ▸" [ref=e87]:
+                - img "Yoru" [ref=e88]
+                - generic [ref=e89]: Yoru
+                - generic [ref=e90]: ▸
+              - button "Neon Neon ▸" [ref=e92]:
+                - img "Neon" [ref=e93]
+                - generic [ref=e94]: Neon
+                - generic [ref=e95]: ▸
+              - button "Iso Iso ▸" [ref=e97]:
+                - img "Iso" [ref=e98]
+                - generic [ref=e99]: Iso
+                - generic [ref=e100]: ▸
+              - button "Waylay Waylay ▸" [ref=e102]:
+                - img "Waylay" [ref=e103]
+                - generic [ref=e104]: Waylay
+                - generic [ref=e105]: ▸
+          - button "Controller (6) ▸" [ref=e107]:
+            - text: Controller
+            - generic [ref=e109]: (6)
+            - generic [ref=e110]: ▸
+          - button "Initiator (7) ▸" [ref=e112]:
+            - text: Initiator
+            - generic [ref=e114]: (7)
+            - generic [ref=e115]: ▸
+          - button "Sentinel (7) ▸" [ref=e117]:
+            - text: Sentinel
+            - generic [ref=e119]: (7)
+            - generic [ref=e120]: ▸
+        - generic [ref=e121]:
+          - heading "On Board (0)" [level=3] [ref=e122]
+          - paragraph [ref=e124]: Click agent → expand → place on map
+      - generic [ref=e126]: Loading board...
+  - alert [ref=e127]
+```

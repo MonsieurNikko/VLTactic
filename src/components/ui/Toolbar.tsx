@@ -4,6 +4,8 @@ import React, { useState } from "react";
 import { useBoardStore, DRAW_COLORS } from "@/store/boardStore";
 import { MAPS } from "@/data/maps";
 import { hasSavedState, getLastSaveTime, clearBoardState } from "@/utils/localStorage";
+import { generateTacticalDescription } from "@/utils/tacticalAnalysis";
+import MapSwitchModal from "./MapSwitchModal";
 
 // ============================================================
 // Toolbar — Top bar with map selector, tools, zoom, actions
@@ -29,6 +31,9 @@ export default function Toolbar({ stageRef }: { stageRef?: React.RefObject<any> 
     saveToLocalStorage,
     loadFromLocalStorage,
     rotateMap,
+    erase,
+    showZones,
+    toggleZones,
   } = useBoardStore();
 
   const [showSuccess, setShowSuccess] = useState(false);
@@ -40,6 +45,8 @@ export default function Toolbar({ stageRef }: { stageRef?: React.RefObject<any> 
 
   const zoomOut = () =>
     useBoardStore.getState().setViewport({ scale: Math.max(0.2, viewport.scale / 1.2) });
+
+  const [modalPendingMap, setModalPendingMap] = useState<string | null>(null);
 
   const zoomPercent = Math.round(viewport.scale * 100);
 
@@ -72,7 +79,7 @@ export default function Toolbar({ stageRef }: { stageRef?: React.RefObject<any> 
     if (items.length === 0 && drawings.length === 0) {
       return;
     }
-    
+
     const confirmed = confirm("Clear current board and start new strategy?");
     if (confirmed) {
       clearBoard();
@@ -115,8 +122,15 @@ export default function Toolbar({ stageRef }: { stageRef?: React.RefObject<any> 
       {/* Map selector */}
       <select
         value={selectedMap}
-        onChange={(e) => setSelectedMap(e.target.value)}
-        className="bg-neutral-800 text-neutral-200 text-xs px-2 py-1.5 rounded border border-neutral-700 focus:border-blue-500 focus:outline-none cursor-pointer shrink-0"
+        onChange={(e) => {
+          const newMap = e.target.value;
+          if (items.length > 0 || drawings.length > 0) {
+            setModalPendingMap(newMap);
+          } else {
+            setSelectedMap(newMap);
+          }
+        }}
+        className="bg-neutral-800 text-white text-sm rounded px-2 py-1 border border-neutral-700 focus:outline-none focus:border-blue-500 cursor-pointer shrink-0"
       >
         {MAPS.map((map) => (
           <option key={map.name} value={map.name}>
@@ -124,6 +138,27 @@ export default function Toolbar({ stageRef }: { stageRef?: React.RefObject<any> 
           </option>
         ))}
       </select>
+
+      <MapSwitchModal
+        isOpen={!!modalPendingMap}
+        mapDisplayName={MAPS.find((m) => m.name === modalPendingMap)?.displayName || ""}
+        onClose={() => setModalPendingMap(null)}
+        onConfirmClear={() => {
+          if (modalPendingMap) {
+            setSelectedMap(modalPendingMap);
+            clearBoard();
+          }
+          setModalPendingMap(null);
+        }}
+        onConfirmSave={() => {
+          if (modalPendingMap) {
+            saveToLocalStorage();
+            setSelectedMap(modalPendingMap);
+            clearBoard();
+          }
+          setModalPendingMap(null);
+        }}
+      />
 
       {/* Rotate map button */}
       <button
@@ -140,36 +175,56 @@ export default function Toolbar({ stageRef }: { stageRef?: React.RefObject<any> 
       <div className="flex items-center gap-1 shrink-0">
         <button
           onClick={() => setActiveTool("select")}
-          className={`px-2 h-7 flex items-center justify-center rounded text-xs transition-colors ${
-            activeTool === "select"
-              ? "bg-blue-600 text-white"
-              : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700"
-          }`}
+          className={`px-2 h-7 flex items-center justify-center rounded text-xs transition-colors ${activeTool === "select"
+            ? "bg-blue-600 text-white"
+            : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700"
+            }`}
           title="Select & Move (V)"
         >
           ↖ Select
         </button>
         <button
           onClick={() => setActiveTool("draw")}
-          className={`px-2 h-7 flex items-center justify-center rounded text-xs transition-colors ${
-            activeTool === "draw"
-              ? "bg-yellow-600 text-white"
-              : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700"
-          }`}
+          className={`px-2 h-7 flex items-center justify-center rounded text-xs transition-colors ${activeTool === "draw"
+            ? "bg-yellow-600 text-white"
+            : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700"
+            }`}
           title="Freehand Draw (D)"
         >
           ✏ Draw
         </button>
         <button
           onClick={() => setActiveTool("arrow")}
-          className={`px-2 h-7 flex items-center justify-center rounded text-xs transition-colors ${
-            activeTool === "arrow"
-              ? "bg-orange-600 text-white"
-              : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700"
-          }`}
+          className={`px-2 h-7 flex items-center justify-center rounded text-xs transition-colors ${activeTool === "arrow"
+            ? "bg-orange-600 text-white"
+            : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700"
+            }`}
           title="Arrow Tool (A)"
         >
           ➜ Arrow
+        </button>
+        <button
+          onClick={() => setActiveTool("eraser")}
+          className={`px-2 h-7 flex items-center justify-center rounded text-xs transition-colors ${activeTool === "eraser"
+            ? "bg-red-600 text-white"
+            : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700"
+            }`}
+          title="Eraser tool (E)"
+        >
+          ✕ Eraser
+        </button>
+
+        <div className="w-px h-4 bg-neutral-800 mx-1" />
+
+        <button
+          onClick={toggleZones}
+          className={`px-2 h-7 flex items-center justify-center rounded text-xs transition-colors ${showZones
+            ? "bg-blue-600/20 text-blue-400 border border-blue-500/50"
+            : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700"
+            }`}
+          title="Toggle Site Labels"
+        >
+          📍 Sites: {showZones ? "ON" : "OFF"}
         </button>
       </div>
 
@@ -182,11 +237,10 @@ export default function Toolbar({ stageRef }: { stageRef?: React.RefObject<any> 
               <button
                 key={c.color}
                 onClick={() => setDrawColor(c.color)}
-                className={`w-5 h-5 rounded-full border-2 transition-all ${
-                  drawColor === c.color
-                    ? "border-white scale-110"
-                    : "border-neutral-600 hover:border-neutral-400"
-                }`}
+                className={`w-5 h-5 rounded-full border-2 transition-all ${drawColor === c.color
+                  ? "border-white scale-110"
+                  : "border-neutral-600 hover:border-neutral-400"
+                  }`}
                 style={{ backgroundColor: c.color }}
                 title={c.name}
               />
@@ -243,7 +297,19 @@ export default function Toolbar({ stageRef }: { stageRef?: React.RefObject<any> 
       </div>
 
       {/* Spacer */}
-      <div className="flex-1" />
+      <div className="flex-1 min-w-4" />
+
+      {/* Strategy Analysis (Phase 2) */}
+      <div className="hidden md:flex flex-col items-end mr-4">
+        <span className="text-[10px] text-neutral-500 uppercase tracking-wider font-bold">
+          Strategy
+        </span>
+        <span className="text-xs text-blue-300 font-medium">
+          {generateTacticalDescription(selectedMap, items)}
+        </span>
+      </div>
+
+      <div className="w-px h-6 bg-neutral-700 shrink-0 hidden md:block" />
 
       {/* Board info */}
       <span className="text-xs text-neutral-500 hidden sm:inline shrink-0">

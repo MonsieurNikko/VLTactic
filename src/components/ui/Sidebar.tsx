@@ -8,10 +8,9 @@ import { CDNImage } from "@/components/ui/CDNImage";
 import type { AgentDef } from "@/types";
 
 // ============================================================
-// Sidebar — Agent & Utility selection panel
-// Click agent row → expand abilities
-// "Place Agent" button → placement mode
-// Click ability → place specific utility
+// Sidebar — Creative Redesign (Phase 3.5)
+// Features: glassmorphism cards, role-specific themes,
+//           improved ability contrast, and tactical layout.
 // ============================================================
 
 const ROLES = ["Duelist", "Controller", "Initiator", "Sentinel"] as const;
@@ -24,12 +23,10 @@ export default function Sidebar() {
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedAgent, setExpandedAgent] = useState<string | null>(null);
 
-  // Click agent row: only toggle expand
   const handleAgentToggle = (agent: AgentDef) => {
     setExpandedAgent(expandedAgent === agent.name ? null : agent.name);
   };
 
-  // Click "Place Agent" button: set pending as agent
   const handlePlaceAgent = (agent: AgentDef) => {
     if (
       pendingAgent?.agentName === agent.name &&
@@ -46,7 +43,6 @@ export default function Sidebar() {
     });
   };
 
-  // Click ability: set pending as utility
   const handleAbilityClick = (agent: AgentDef, ability: string) => {
     if (
       pendingAgent?.agentName === agent.name &&
@@ -64,191 +60,215 @@ export default function Sidebar() {
     });
   };
 
+  const handleDragStart = (e: React.DragEvent, agent: AgentDef, utilityName?: string) => {
+    const data = {
+      agentName: agent.name,
+      utilityName,
+      team: activeTeam,
+      color: agent.color,
+    };
+    e.dataTransfer.setData("agent-data", JSON.stringify(data));
+    e.dataTransfer.effectAllowed = "copy";
+  };
+
   const filteredAgents = searchQuery
     ? AGENTS.filter((a) =>
-        a.name.toLowerCase().includes(searchQuery.toLowerCase())
-      )
+      a.name.toLowerCase().includes(searchQuery.toLowerCase())
+    )
     : AGENTS;
 
   return (
-    <div className="w-72 bg-neutral-900 border-r border-neutral-800 flex flex-col h-full shrink-0">
-      {/* Header */}
-      <div className="p-3 border-b border-neutral-800">
-        <h2 className="text-sm font-semibold text-neutral-300 uppercase tracking-wider">
-          Agents & Abilities
-        </h2>
-        <input
-          type="text"
-          placeholder="Search agent..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="mt-2 w-full bg-neutral-800 text-neutral-200 text-xs px-3 py-1.5 rounded border border-neutral-700 focus:border-blue-500 focus:outline-none"
-        />
+    <div className="w-80 bg-neutral-950 border-r border-neutral-800 flex flex-col h-full shrink-0 shadow-2xl">
+      {/* Search Header */}
+      <div className="p-4 bg-neutral-900/50 backdrop-blur-md border-b border-neutral-800">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-[11px] font-bold text-neutral-500 uppercase tracking-[0.2em]">
+            Tactical Units
+          </h2>
+          <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+        </div>
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="Search operative..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-neutral-800/80 text-white text-xs px-9 py-2 rounded-lg border border-neutral-700 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none placeholder:text-neutral-600"
+          />
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500">🔍</span>
+        </div>
       </div>
 
-      {/* Team toggle */}
-      <div className="flex p-2 gap-1">
+      {/* Team Selection Cards */}
+      <div className="flex p-3 gap-2 bg-neutral-900/20">
         <button
           onClick={() => setActiveTeam("attack")}
-          className={`flex-1 text-xs py-1.5 rounded font-medium transition-colors ${
-            activeTeam === "attack"
-              ? "bg-red-600 text-white"
-              : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700"
-          }`}
+          className={`flex-1 flex items-center justify-center gap-2 text-[11px] py-2 rounded-lg font-bold transition-all border ${activeTeam === "attack"
+            ? "bg-red-600/20 border-red-500/50 text-red-500 shadow-[0_0_15px_rgba(239,68,68,0.1)]"
+            : "bg-neutral-900 border-neutral-800 text-neutral-500 hover:border-neutral-700"
+            }`}
         >
-          ⚔ Attack
+          <span className="text-sm">⚔</span> ATTACK
         </button>
         <button
           onClick={() => setActiveTeam("defend")}
-          className={`flex-1 text-xs py-1.5 rounded font-medium transition-colors ${
-            activeTeam === "defend"
-              ? "bg-emerald-600 text-white"
-              : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700"
-          }`}
+          className={`flex-1 flex items-center justify-center gap-2 text-[11px] py-2 rounded-lg font-bold transition-all border ${activeTeam === "defend"
+            ? "bg-emerald-600/20 border-emerald-500/50 text-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.1)]"
+            : "bg-neutral-900 border-neutral-800 text-neutral-500 hover:border-neutral-700"
+            }`}
         >
-          🛡 Defend
+          <span className="text-sm">🛡</span> DEFEND
         </button>
       </div>
 
-      {/* Agent list by role */}
-      <div className="flex-1 overflow-y-auto scrollbar-thin">
+      {/* Operative Registry */}
+      <div className="flex-1 overflow-y-auto scrollbar-thin px-3 py-2 space-y-4">
         {ROLES.map((role) => {
           const roleAgents = filteredAgents.filter((a) => a.role === role);
           if (roleAgents.length === 0) return null;
           const isExpanded = expandedRole === role;
 
           return (
-            <div key={role}>
+            <div key={role} className="space-y-2">
               <button
                 onClick={() => setExpandedRole(isExpanded ? null : role)}
-                className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold uppercase tracking-wider hover:bg-neutral-800 transition-colors"
-                style={{ color: ROLE_COLORS[role] }}
+                className="w-full flex items-center gap-2 px-1 py-1 group transition-all"
               >
-                <span
-                  className="w-2 h-2 rounded-full"
+                <div
+                  className="w-1 h-4 rounded-full transition-all group-hover:scale-y-125"
                   style={{ backgroundColor: ROLE_COLORS[role] }}
                 />
-                {role}
-                <span className="text-neutral-600 text-[10px] font-normal ml-1">
-                  ({roleAgents.length})
+                <span className="text-[11px] font-black uppercase tracking-widest" style={{ color: ROLE_COLORS[role] }}>
+                  {role}s
                 </span>
-                <span className="ml-auto text-neutral-500">
-                  {isExpanded ? "▾" : "▸"}
+                <div className="h-px flex-1 bg-neutral-800 ml-2 opacity-50" />
+                <span className="text-[10px] text-neutral-600 font-mono">
+                  [{roleAgents.length}]
                 </span>
               </button>
 
               {isExpanded && (
-                <div className="px-2 pb-2 space-y-0.5">
+                <div className="grid gap-1.5 animate-in slide-in-from-left-2 duration-300">
                   {roleAgents.map((agent) => {
-                    const isAgentPending =
-                      pendingAgent?.agentName === agent.name &&
-                      !pendingAgent?.utilityName &&
-                      pendingAgent?.team === activeTeam;
                     const isAgentExpanded = expandedAgent === agent.name;
+                    const isPlaceAgentActive = pendingAgent?.agentName === agent.name && !pendingAgent?.utilityName;
 
                     return (
-                      <div key={agent.name}>
-                        {/* Agent row: click to expand */}
-                        <button
+                      <div key={agent.name} className="group/agent">
+                        <div
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, agent)}
                           onClick={() => handleAgentToggle(agent)}
-                          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs transition-all ${
-                            isAgentExpanded
-                              ? "bg-neutral-800 ring-1 ring-neutral-600"
-                              : "bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
-                          }`}
+                          className={`relative flex items-center gap-3 p-2 rounded-xl border transition-all cursor-pointer overflow-hidden ${isAgentExpanded
+                              ? "bg-neutral-800/80 border-neutral-600 shadow-xl"
+                              : "bg-neutral-900/40 border-neutral-800/50 hover:border-neutral-700 hover:bg-neutral-800/40"
+                            }`}
                         >
-                          {/* Agent icon from CDN */}
-                          {agent.iconUrl ? (
+                          {/* Decorative background role color glow */}
+                          {isAgentExpanded && (
+                            <div
+                              className="absolute -right-8 -top-8 w-24 h-24 rounded-full blur-[40px] opacity-20"
+                              style={{ backgroundColor: agent.color }}
+                            />
+                          )}
+
+                          <div className="relative">
                             <CDNImage
                               src={agent.iconUrl}
                               alt={agent.name}
-                              width={24}
-                              height={24}
-                              className="w-6 h-6 rounded-full shrink-0 bg-neutral-700 object-cover"
+                              width={32}
+                              height={32}
+                              className={`w-9 h-9 rounded-lg object-cover border transition-all ${isAgentExpanded ? "border-white/20 scale-110" : "border-transparent opacity-80"
+                                }`}
                             />
-                          ) : (
-                            <span
-                              className="w-6 h-6 rounded-full shrink-0 border border-white/20 flex items-center justify-center text-[9px] font-bold text-white"
-                              style={{ backgroundColor: agent.color }}
-                            >
-                              {agent.name.slice(0, 2).toUpperCase()}
-                            </span>
-                          )}
-                          <span className="truncate flex-1 text-left text-neutral-200">
-                            {agent.name}
-                          </span>
-                          <span className="text-neutral-500 text-[10px]">
-                            {isAgentExpanded ? "▾" : "▸"}
-                          </span>
-                        </button>
+                            {isPlaceAgentActive && (
+                              <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full border-2 border-neutral-950 shadow-lg" />
+                            )}
+                          </div>
 
-                        {/* Expanded panel: Place Agent + abilities */}
+                          <div className="flex-1">
+                            <h4 className={`text-xs font-bold transition-colors ${isAgentExpanded ? "text-white" : "text-neutral-400 group-hover/agent:text-neutral-200"}`}>
+                              {agent.name}
+                            </h4>
+                            <div className="flex gap-1 mt-0.5">
+                              {agent.abilities.slice(0, 4).map((_, idx) => (
+                                <div key={idx} className="w-1.5 h-1.5 rounded-full bg-neutral-700 opacity-50" />
+                              ))}
+                            </div>
+                          </div>
+
+                          <span className={`text-[10px] transition-transform duration-300 ${isAgentExpanded ? "rotate-180 text-white" : "text-neutral-600 group-hover/agent:text-neutral-400"}`}>
+                            ▿
+                          </span>
+                        </div>
+
+                        {/* Tactical Card Content */}
                         {isAgentExpanded && (
-                          <div className="ml-3 mt-0.5 mb-1 space-y-0.5">
-                            {/* Place Agent button */}
+                          <div className="mt-1.5 mx-1 p-2 bg-neutral-900 rounded-lg border border-neutral-800 space-y-2 animate-in slide-in-from-top-2 duration-300">
+                            {/* Place Agent Primary Action */}
                             <button
                               onClick={() => handlePlaceAgent(agent)}
-                              className={`w-full flex items-center gap-1.5 px-2 py-1.5 rounded text-[11px] font-medium transition-all ${
-                                isAgentPending
-                                  ? "bg-blue-600 text-white ring-1 ring-blue-400"
-                                  : "bg-neutral-700/60 text-neutral-200 hover:bg-blue-600/30 hover:text-white"
-                              }`}
+                              className={`w-full group/place flex items-center justify-between p-2 rounded-md transition-all ${isPlaceAgentActive
+                                  ? "bg-blue-600' text-white shadow-lg shadow-blue-900/20"
+                                  : "bg-neutral-800/50 text-neutral-400 hover:bg-blue-600/20 hover:text-white"
+                                }`}
                             >
-                              <span className="text-sm">👤</span>
-                              <span>Place {agent.name}</span>
-                              <span className={`ml-auto text-[9px] ${isAgentPending ? "text-blue-200" : "text-neutral-500"}`}>
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm">👤</span>
+                                <span className="text-[11px] font-bold uppercase tracking-wider">Place {agent.name}</span>
+                              </div>
+                              <div className="px-1.5 py-0.5 rounded text-[9px] font-black bg-black/30">
                                 {activeTeam === "attack" ? "ATK" : "DEF"}
-                              </span>
+                              </div>
                             </button>
 
-                            {/* Abilities list */}
-                            {agent.abilities.map((ability) => {
-                              const utilType = getAbilityType(ability);
-                              const abilityIconUrl = getAbilityIconURL(agent.name, ability);
-                              const isAbilityPending =
-                                pendingAgent?.agentName === agent.name &&
-                                pendingAgent?.utilityName === ability &&
-                                pendingAgent?.team === activeTeam;
+                            <div className="h-px bg-neutral-800 mx-1" />
 
-                              return (
-                                <button
-                                  key={ability}
-                                  onClick={() =>
-                                    handleAbilityClick(agent, ability)
-                                  }
-                                  className={`w-full flex items-center gap-1.5 px-2 py-1 rounded text-[11px] transition-all ${
-                                    isAbilityPending
-                                      ? "bg-indigo-600 text-white ring-1 ring-indigo-400"
-                                      : "bg-neutral-800/50 text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200"
-                                  }`}
-                                  title={`Place ${ability} (${utilType})`}
-                                >
-                                  {/* Ability icon from CDN, fallback to colored dot */}
-                                  {abilityIconUrl ? (
-                                    <CDNImage
-                                      src={abilityIconUrl}
-                                      alt={ability}
-                                      width={18}
-                                      height={18}
-                                      className="w-4.5 h-4.5 shrink-0 object-contain brightness-90 invert"
-                                    />
-                                  ) : (
-                                    <span
-                                      className="w-4 h-4 rounded-sm shrink-0 flex items-center justify-center"
-                                      style={{
-                                        backgroundColor:
-                                          UTIL_TYPE_COLORS[utilType] ??
-                                          UTIL_TYPE_COLORS.default,
-                                      }}
-                                    />
-                                  )}
-                                  <span className="truncate">{ability}</span>
-                                  <span className="ml-auto text-[9px] text-neutral-600">
-                                    {utilType}
-                                  </span>
-                                </button>
-                              );
-                            })}
+                            {/* Specialized Utilities */}
+                            <div className="grid grid-cols-1 gap-1">
+                              {agent.abilities.map((ability) => {
+                                const utilType = getAbilityType(ability);
+                                const iconUrl = getAbilityIconURL(agent.name, ability);
+                                const isPending = pendingAgent?.agentName === agent.name && pendingAgent?.utilityName === ability;
+
+                                return (
+                                  <button
+                                    key={ability}
+                                    draggable
+                                    onDragStart={(e) => handleDragStart(e, agent, ability)}
+                                    onClick={() => handleAbilityClick(agent, ability)}
+                                    className={`flex items-center gap-2.5 p-1.5 rounded-md transition-all border ${isPending
+                                        ? "bg-indigo-600 border-indigo-500 text-white"
+                                        : "bg-neutral-950/20 border-transparent hover:border-neutral-700 hover:bg-neutral-800/40 text-neutral-400 hover:text-neutral-200"
+                                      }`}
+                                  >
+                                    <div className="relative w-5 h-5 flex items-center justify-center">
+                                      {iconUrl ? (
+                                        <CDNImage
+                                          src={iconUrl}
+                                          alt={ability}
+                                          width={20}
+                                          height={20}
+                                          className={`w-full h-full object-contain brightness-110 contrast-125 ${isPending ? "" : "brightness-75 group-hover:brightness-100 opacity-70 group-hover:opacity-100"}`}
+                                        />
+                                      ) : (
+                                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: UTIL_TYPE_COLORS[utilType] || '#888' }} />
+                                      )}
+                                    </div>
+                                    <div className="flex-1 text-left">
+                                      <div className="text-[10px] font-bold leading-none mb-0.5">{ability}</div>
+                                      <div
+                                        className="text-[8px] font-black uppercase tracking-tighter opacity-60"
+                                        style={{ color: UTIL_TYPE_COLORS[utilType] }}
+                                      >
+                                        {utilType}
+                                      </div>
+                                    </div>
+                                    {isPending && <div className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_8px_white]" />}
+                                  </button>
+                                );
+                              })}
+                            </div>
                           </div>
                         )}
                       </div>
@@ -261,56 +281,57 @@ export default function Sidebar() {
         })}
       </div>
 
-      {/* Board items list */}
-      <div className="border-t border-neutral-800 p-3">
-        <h3 className="text-xs font-semibold text-neutral-400 uppercase mb-2">
-          On Board ({items.length})
-        </h3>
-        <div className="max-h-44 overflow-y-auto space-y-0.5 scrollbar-thin">
+      {/* Deployment Summary */}
+      <div className="p-4 bg-neutral-900 border-t border-neutral-800 shadow-[0_-10px_20px_rgba(0,0,0,0.5)]">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">
+            Deployed Units [{items.length}]
+          </h3>
+          {items.length > 0 && (
+            <button
+              onClick={() => useBoardStore.getState().clearBoard()}
+              className="text-[9px] text-red-500 hover:text-red-400 font-bold transition-colors"
+            >
+              PURGE ALL
+            </button>
+          )}
+        </div>
+
+        <div className="max-h-40 overflow-y-auto space-y-1.5 pr-2 scrollbar-thin">
           {items.length === 0 ? (
-            <p className="text-xs text-neutral-600 italic">
-              Click agent → expand → place on map
-            </p>
+            <div className="bg-neutral-800/30 border border-dashed border-neutral-700/50 rounded-lg p-3 text-center">
+              <p className="text-[10px] text-neutral-600 font-medium">No operatives currently on board</p>
+              <p className="text-[9px] text-neutral-700 mt-1">Select an agent above to begin strategy</p>
+            </div>
           ) : (
             items.map((item) => (
               <div
                 key={item.id}
                 onClick={() => selectItem(item.id)}
-                className={`flex items-center gap-2 px-2 py-1 rounded text-xs cursor-pointer transition-colors ${
-                  selectedItemId === item.id
-                    ? "bg-blue-600/30 text-white"
-                    : "bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
-                }`}
-              >
-                <span
-                  className="w-2.5 h-2.5 rounded-full shrink-0"
-                  style={{ backgroundColor: item.color }}
-                />
-                <span className="truncate flex-1">
-                  {item.agentName}
-                  {item.utilityName && (
-                    <span className="text-neutral-500 ml-1">
-                      — {item.utilityName}
-                    </span>
-                  )}
-                </span>
-                <span
-                  className={`text-[10px] px-1 rounded ${
-                    item.team === "attack"
-                      ? "bg-red-900/50 text-red-400"
-                      : "bg-emerald-900/50 text-emerald-400"
+                className={`flex items-center gap-2.5 p-2 rounded-lg cursor-pointer transition-all border ${selectedItemId === item.id
+                    ? "bg-blue-600/10 border-blue-500/50 text-white"
+                    : "bg-neutral-800/40 border-neutral-800 text-neutral-400 hover:border-neutral-700"
                   }`}
-                >
+              >
+                <div
+                  className="w-2.5 h-2.5 rounded-full shadow-[0_0_5px_currentColor]"
+                  style={{ color: item.color, backgroundColor: item.color }}
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="text-[11px] font-bold truncate leading-tight">{item.agentName}</div>
+                  {item.utilityName && (
+                    <div className="text-[9px] text-neutral-600 truncate">{item.utilityName}</div>
+                  )}
+                </div>
+                <div className={`px-1.5 py-0.5 rounded text-[8px] font-black ${item.team === "attack" ? "bg-red-500/10 text-red-500" : "bg-emerald-500/10 text-emerald-500"
+                  }`}>
                   {item.team === "attack" ? "ATK" : "DEF"}
-                </span>
+                </div>
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    removeItem(item.id);
-                  }}
-                  className="text-neutral-500 hover:text-red-400 transition-colors"
+                  onClick={(e) => { e.stopPropagation(); removeItem(item.id); }}
+                  className="w-5 h-5 flex items-center justify-center rounded-md hover:bg-red-500/20 hover:text-red-500 transition-all text-neutral-600"
                 >
-                  ×
+                  ✕
                 </button>
               </div>
             ))

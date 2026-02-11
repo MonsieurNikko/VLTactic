@@ -20,7 +20,7 @@ interface Props {
 const AGENT_RADIUS = 22;
 
 export function DraggableAgent({ item, isSelected }: Props) {
-  const { updateItemPosition, selectItem } = useBoardStore();
+  const { updateItemPosition, selectItem, mapRotationOffset } = useBoardStore();
   const groupRef = useRef<Konva.Group>(null);
   const [iconImage, setIconImage] = useState<HTMLImageElement | null>(null);
 
@@ -28,7 +28,7 @@ export function DraggableAgent({ item, isSelected }: Props) {
 
   useEffect(() => {
     if (!iconUrl) return;
-    
+
     let mounted = true;
     const img = new window.Image();
     img.crossOrigin = "anonymous";
@@ -72,6 +72,7 @@ export function DraggableAgent({ item, isSelected }: Props) {
       ref={groupRef}
       x={item.x}
       y={item.y}
+      rotation={-mapRotationOffset} // Counter-rotate to keep upright
       draggable
       onDragEnd={handleDragEnd}
       onClick={handleClick}

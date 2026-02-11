@@ -76,3 +76,29 @@ This document tracks the evolution of the project. **AI Agents MUST read this fi
     - Pending agent auto-cancels when switching to Draw/Arrow tools to avoid accidental placement.
     - Onboarding/shortcut hints updated with redo shortcut.
   - **Context:** Addressed post-review usability gaps (canvas agent recognition, drawing control, undo/redo workflow).
+
+## [v0.5.0] - Phase 1.7: Production Quality Upgrade
+- **2026-02-11** - **Comprehensive Feature Enhancement + Critical Bug Fixes**
+  - **Author:** GitHub Copilot
+  - **Changes:**
+    - **[CRITICAL] Save/Load System:** localStorage auto-save every 5s + manual save/load buttons. Version tracking (v0.5.0). SSR-safe guards. Fixes major pain point (data loss on F5 refresh).
+    - **[CRITICAL] PNG Export:** Export strategy as high-res PNG (2x resolution). Clipboard copy support. Viewport reset/restore. Integrated into Toolbar with 📸 button.
+    - **[CRITICAL] Real Ability Icons:** Fetched complete Valorant API data (88KB). Added UUIDs to all 28 agents. Created ability name→slot mapping. Updated `UtilityIcon.tsx` to load CDN images. Format: `valorant-api.com/agents/{uuid}/abilities/{slot}/displayicon.png`.
+    - **[CRITICAL] Next.js CDN Optimization:** Created `CDNImage.tsx` wrapper component with custom loader for external CDNs. Replaced native `<img>` tags in Sidebar. Eliminates Next.js linting warnings.
+    - **[CRITICAL] Map Rotation:** 6 horizontal maps (Bind, Breeze, Fracture, Pearl, Lotus, Sunset) pre-rotated -90° CCW via spawn coordinate analysis. `↻ Rotate` button rotates map 90° clockwise with all items/drawings following.
+    - **[CRITICAL] Added Corrode map:** New competitive map added to map pool.
+    - **[BUG FIX] React Cascading Render Warning:** Added `mounted` boolean flag pattern in `DraggableAgent.tsx` and `MapBoard.tsx` to prevent setState on unmounted components.
+    - **[BUG FIX] Race Conditions:** Fixed image loading race conditions during rapid map/agent switches using mounted tracking.
+    - **[BUG FIX] SSR localStorage Errors:** Added SSR guards (`typeof window !== "undefined"`) to all localStorage functions. Build now succeeds without prerender errors.
+    - **[ARCHITECTURE] Store Integration:** Added `saveToLocalStorage()`, `loadFromLocalStorage()`, `rotateMap()` actions to `boardStore.ts`. Auto-save setup in `MapBoard.tsx` useEffect with cleanup.
+    - **[ARCHITECTURE] Component Prop Threading:** Created shared `stageRef` in `page.tsx`, passed to both MapBoard and Toolbar for export functionality.
+    - **[DATA] Agent UUIDs:** Added UUID field to all 28 agents in `agents.ts` for ability icon URL generation.
+    - **[DATA] Ability Slot Mapping:** Complete ability name→API slot mapping in `abilities.ts` (150+ abilities across all agents).
+    - **[TYPES] TypeScript Updates:** Added `uuid?: string` to `AgentDef` interface. Added `AbilitySlot` type export.
+    - **[UI] Toolbar Enhancements:** New buttons - 💾 Save, 📂 Load, 📸 Export, 🗑 New, ↻ Rotate. Save status displays "Last saved: Xm ago". Success toast notifications.
+    - **[UI] Utility Icon Update:** Real ability icons displayed as Konva Image, fallback to colored circle. Removed text labels for cleaner look.
+  - **Context:** User demanded comprehensive upgrade following strict adherence to agent_guidelines.md. Focused on real API integration, persistent storage, export capabilities, map rotation, and critical bug fixes. Addressed all Tier 1 issues from evaluation.
+  - **Build:** ✅ Passing (Next.js 16, TypeScript, SSR prerender)
+  - **Files Created:** `localStorage.ts`, `exportCanvas.ts`, `CDNImage.tsx`
+  - **Files Modified:** `abilities.ts`, `agents.ts`, `types/index.ts`, `boardStore.ts`, `Toolbar.tsx`, `MapBoard.tsx`, `page.tsx`, `DraggableAgent.tsx`, `Sidebar.tsx`, `UtilityIcon.tsx`, `maps.ts`
+  - **Next Steps:** Phase 2 - Tree System & Data Logic (Zone mapping, tactical description generation)

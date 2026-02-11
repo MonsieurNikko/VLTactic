@@ -1,19 +1,25 @@
 "use client";
 
 import React, { useRef, useCallback, useEffect, useState } from "react";
-import { Stage, Layer, Image as KonvaImage, Rect, Text, Line, Arrow } from "react-konva";
+import { Stage, Layer, Image as KonvaImage, Rect, Text, Line, Arrow, Group } from "react-konva";
 import Konva from "konva";
 import { useBoardStore } from "@/store/boardStore";
 import { MAPS } from "@/data/maps";
 import { DraggableAgent } from "./DraggableAgent";
 import { UtilityIcon } from "./UtilityIcon";
+import { RemoteCursors } from "./RemoteCursors";
+import { MapZonesOverlay } from "./MapZonesOverlay";
 import { setupAutoSave } from "@/utils/localStorage";
+import { realtimeService } from "@/utils/realtimeService";
 
 // ============================================================
 // MapBoard — Main Konva Canvas component
 // Features: zoom/pan, map background, draggable agents,
 //           space+drag pan, center-on-load, drawing + arrow tools
 //           auto-save to localStorage every 5s
+//           Touch support (pinch-zoom, pan)
+//           Map Rotation support (visual rotation)
+//           Real-time collaboration (BroadcastChannel)
 // ============================================================
 
 const MIN_SCALE = 0.2;
@@ -24,10 +30,23 @@ interface MapBoardProps {
   stageRefFromParent?: React.RefObject<Konva.Stage | null>;
 }
 
+// Distance helper for pinch zoom
+function getDistance(p1: { x: number; y: number }, p2: { x: number; y: number }) {
+  return Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
+}
+
+// Center helper for pinch zoom
+function getCenter(p1: { x: number; y: number }, p2: { x: number; y: number }) {
+  return {
+    x: (p1.x + p2.x) / 2,
+    y: (p1.y + p2.y) / 2,
+  };
+}
+
 export default function MapBoard({ stageRefFromParent }: MapBoardProps) {
   const localStageRef = useRef<Konva.Stage>(null);
   const stageRef = (stageRefFromParent || localStageRef) as React.RefObject<Konva.Stage>;
-  
+
   const {
     items,
     selectedMap,
@@ -52,6 +71,9 @@ export default function MapBoard({ stageRefFromParent }: MapBoardProps) {
     setActiveTool,
     setSelectedDrawing,
     loadFromLocalStorage,
+    updateRemoteCursor,
+    initSession,
+    erase,
   } = useBoardStore();
 
   const [stageSize, setStageSizeLocal] = useState({ width: 800, height: 600 });
@@ -63,6 +85,11 @@ export default function MapBoard({ stageRefFromParent }: MapBoardProps) {
   const hasInitialCentered = useRef(false);
   const hasLoadedFromStorage = useRef(false);
 
+  // Interaction Refs
+  const isPanning = useRef(false);
+  const panStart = useRef({ x: 0, y: 0 });
+  const mouseDownStart = useRef<{ x: number; y: number } | null>(null); // For click distance check
+
   // Freehand drawing state (local for in-progress stroke only)
   const [isDrawing, setIsDrawing] = useState(false);
   const [drawingPoints, setDrawingPoints] = useState<number[]>([]);
@@ -72,18 +99,41 @@ export default function MapBoard({ stageRefFromParent }: MapBoardProps) {
   const arrowEndRef = useRef<{ x: number; y: number } | null>(null);
   const [arrowPreview, setArrowPreview] = useState<number[] | null>(null);
 
+  // Touch Zoom Refs
+  const lastCenter = useRef<{ x: number; y: number } | null>(null);
+  const lastDist = useRef<number>(0);
+
   // Derive loading: no image yet and no error
   const mapLoading = !mapImage && !mapLoadError;
 
   const mapDef = MAPS.find((m) => m.name === selectedMap) ?? MAPS[0];
 
+  // Helper: Unrotate point to get Data Coordinate (for saving items/drawings)
+  const toDataCoords = useCallback((visualX: number, visualY: number) => {
+    if (mapRotationOffset === 0) return { x: visualX, y: visualY };
+
+    const cx = mapDef.width / 2;
+    const cy = mapDef.height / 2;
+    const rad = (-mapRotationOffset * Math.PI) / 180; // Inverse rotation
+
+    // Rotate around center
+    const dx = visualX - cx;
+    const dy = visualY - cy;
+
+    return {
+      x: cx + (dx * Math.cos(rad) - dy * Math.sin(rad)),
+      y: cy + (dx * Math.sin(rad) + dy * Math.cos(rad)),
+    };
+  }, [mapRotationOffset, mapDef.width, mapDef.height]);
+
   // ── Load from localStorage on mount ───────────────────────
   useEffect(() => {
     if (!hasLoadedFromStorage.current) {
       hasLoadedFromStorage.current = true;
+      initSession(); // Fresh session check
       loadFromLocalStorage();
     }
-  }, [loadFromLocalStorage]);
+  }, [loadFromLocalStorage, initSession]);
 
   // ── Auto-save setup  ───────────────────────────────────────
   useEffect(() => {
@@ -91,11 +141,44 @@ export default function MapBoard({ stageRefFromParent }: MapBoardProps) {
       items: useBoardStore.getState().items,
       drawings: useBoardStore.getState().drawings,
       selectedMap: useBoardStore.getState().selectedMap,
+      mapRotationOffset: useBoardStore.getState().mapRotationOffset,
     });
 
     const cleanup = setupAutoSave(getState);
     return cleanup;
   }, []);
+
+  // ── Real-time Event Subscription ──────────────────────────
+  useEffect(() => {
+    const unsub = realtimeService.subscribe((msg) => {
+      const s = useBoardStore.getState();
+
+      switch (msg.type) {
+        case "CURSOR_MOVE":
+          updateRemoteCursor(msg.senderId, msg.payload);
+          break;
+        case "ITEM_ADDED":
+          s.addItem(msg.payload, true);
+          break;
+        case "ITEM_MOVED":
+          s.updateItemPosition(msg.payload.id, msg.payload.x, msg.payload.y, true);
+          break;
+        case "ITEM_REMOVED":
+          s.removeItem(msg.payload.id, true);
+          break;
+        case "DRAWING_ADDED":
+          s.addDrawing(msg.payload, true);
+          break;
+        case "DRAWING_REMOVED":
+          s.removeDrawing(msg.payload.id, true);
+          break;
+        case "BOARD_CLEARED":
+          s.clearBoard(true);
+          break;
+      }
+    });
+    return unsub;
+  }, [updateRemoteCursor]);
 
   // ── Center & fit map to stage ─────────────────────────────
   const centerMap = useCallback(
@@ -195,7 +278,6 @@ export default function MapBoard({ stageRefFromParent }: MapBoardProps) {
   // ── Key handlers ──────────────────────────────────────────
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't capture shortcuts when typing in inputs
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") return;
 
@@ -204,7 +286,6 @@ export default function MapBoard({ stageRefFromParent }: MapBoardProps) {
         spaceHeld.current = true;
         setCursorStyle("grab");
       }
-      // Delete selected item with Delete/Backspace
       if ((e.code === "Delete" || e.code === "Backspace") && selectedItemId) {
         e.preventDefault();
         removeItem(selectedItemId);
@@ -213,12 +294,10 @@ export default function MapBoard({ stageRefFromParent }: MapBoardProps) {
         e.preventDefault();
         removeDrawing(selectedDrawingId);
       }
-      // Escape to cancel pending agent or deselect
       if (e.code === "Escape") {
         if (pendingAgent) setPendingAgent(null);
         else selectItem(null);
       }
-      // Ctrl+Z → undo drawing
       if ((e.ctrlKey || e.metaKey) && e.code === "KeyZ") {
         e.preventDefault();
         if (e.shiftKey) redoDrawing();
@@ -228,7 +307,6 @@ export default function MapBoard({ stageRefFromParent }: MapBoardProps) {
         e.preventDefault();
         redoDrawing();
       }
-      // Tool shortcuts: V = select, D = draw, A = arrow
       if (e.code === "KeyV" && !e.ctrlKey && !e.metaKey) setActiveTool("select");
       if (e.code === "KeyD" && !e.ctrlKey && !e.metaKey) setActiveTool("draw");
       if (e.code === "KeyA" && !e.ctrlKey && !e.metaKey) setActiveTool("arrow");
@@ -278,10 +356,93 @@ export default function MapBoard({ stageRefFromParent }: MapBoardProps) {
     [viewport, setViewport]
   );
 
-  // ── Click on map to place pending agent / utility ─────────
+  // ── Touch Events (Pinch Zoom + Pan) ───────────────────────
+  const handleTouchStart = (e: Konva.KonvaEventObject<TouchEvent>) => {
+    const touch1 = e.evt.touches[0];
+    const touch2 = e.evt.touches[1];
+
+    if (touch1 && touch2) {
+      isPanning.current = true;
+      lastDist.current = getDistance(
+        { x: touch1.clientX, y: touch1.clientY },
+        { x: touch2.clientX, y: touch2.clientY }
+      );
+      lastCenter.current = getCenter(
+        { x: touch1.clientX, y: touch1.clientY },
+        { x: touch2.clientX, y: touch2.clientY }
+      );
+    } else if (touch1) {
+      if (activeTool === "select" && !pendingAgent) {
+        isPanning.current = true;
+        panStart.current = {
+          x: touch1.clientX - viewport.x,
+          y: touch1.clientY - viewport.y,
+        };
+      }
+    }
+  };
+
+  const handleTouchMove = (e: Konva.KonvaEventObject<TouchEvent>) => {
+    const touch1 = e.evt.touches[0];
+    const touch2 = e.evt.touches[1];
+
+    if (touch1 && touch2) {
+      e.evt.preventDefault();
+      const newDist = getDistance(
+        { x: touch1.clientX, y: touch1.clientY },
+        { x: touch2.clientX, y: touch2.clientY }
+      );
+      const newCenter = getCenter(
+        { x: touch1.clientX, y: touch1.clientY },
+        { x: touch2.clientX, y: touch2.clientY }
+      );
+
+      if (lastCenter.current && lastDist.current > 0) {
+        const pointTo = {
+          x: (lastCenter.current.x - viewport.x) / viewport.scale,
+          y: (lastCenter.current.y - viewport.y) / viewport.scale,
+        };
+
+        const scale = viewport.scale * (newDist / lastDist.current);
+        const constrainedScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale));
+
+        const dx = newCenter.x - lastCenter.current.x;
+        const dy = newCenter.y - lastCenter.current.y;
+
+        const newPos = {
+          x: newCenter.x - pointTo.x * constrainedScale + dx,
+          y: newCenter.y - pointTo.y * constrainedScale + dy,
+        };
+
+        setViewport({ scale: constrainedScale, ...newPos });
+      }
+
+      lastDist.current = newDist;
+      lastCenter.current = newCenter;
+    } else if (touch1 && isPanning.current) {
+      setViewport({
+        x: touch1.clientX - panStart.current.x,
+        y: touch1.clientY - panStart.current.y,
+      });
+    }
+  };
+
+  const handleTouchEnd = () => {
+    isPanning.current = false;
+    lastDist.current = 0;
+    lastCenter.current = null;
+  };
+
+  // ── Click to Place ────────────────────────────────────────
   const handleStageClick = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent>) => {
       if (spaceHeld.current) return;
+
+      if (mouseDownStart.current) {
+        const dx = e.evt.clientX - mouseDownStart.current.x;
+        const dy = e.evt.clientY - mouseDownStart.current.y;
+        if (Math.hypot(dx, dy) > 5) return;
+      }
 
       const clickedOnEmpty =
         e.target === e.target.getStage() ||
@@ -299,8 +460,9 @@ export default function MapBoard({ stageRefFromParent }: MapBoardProps) {
         const pointer = stage.getPointerPosition();
         if (!pointer) return;
 
-        const mapX = (pointer.x - viewport.x) / viewport.scale;
-        const mapY = (pointer.y - viewport.y) / viewport.scale;
+        const visualX = (pointer.x - viewport.x) / viewport.scale;
+        const visualY = (pointer.y - viewport.y) / viewport.scale;
+        const { x: mapX, y: mapY } = toDataCoords(visualX, visualY);
 
         addItem({
           type: pendingAgent.utilityName ? "utility" : "agent",
@@ -313,16 +475,14 @@ export default function MapBoard({ stageRefFromParent }: MapBoardProps) {
         });
       }
     },
-    [pendingAgent, viewport, addItem, selectItem, setSelectedDrawing]
+    [pendingAgent, viewport, addItem, selectItem, setSelectedDrawing, toDataCoords]
   );
 
-  // ── Pan with middle mouse / right-click / Space+left-click ─
-  const isPanning = useRef(false);
-  const panStart = useRef({ x: 0, y: 0 });
-
+  // ── Mouse Handlers (Pan, Draw, Arrow) ─────────────────────
   const handleMouseDown = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent>) => {
-      // Pan: Space+left, middle, right
+      mouseDownStart.current = { x: e.evt.clientX, y: e.evt.clientY };
+
       if (
         (e.evt.button === 0 && spaceHeld.current) ||
         e.evt.button === 1 ||
@@ -342,17 +502,16 @@ export default function MapBoard({ stageRefFromParent }: MapBoardProps) {
       if (!stage) return;
       const pointer = stage.getPointerPosition();
       if (!pointer) return;
-      const mapX = (pointer.x - viewport.x) / viewport.scale;
-      const mapY = (pointer.y - viewport.y) / viewport.scale;
+      const visualX = (pointer.x - viewport.x) / viewport.scale;
+      const visualY = (pointer.y - viewport.y) / viewport.scale;
+      const { x: mapX, y: mapY } = toDataCoords(visualX, visualY);
 
-      // Freehand draw tool
       if (activeTool === "draw" && e.evt.button === 0 && !spaceHeld.current) {
         setIsDrawing(true);
         setDrawingPoints([mapX, mapY]);
         return;
       }
 
-      // Arrow tool
       if (activeTool === "arrow" && e.evt.button === 0 && !spaceHeld.current) {
         arrowStartRef.current = { x: mapX, y: mapY };
         arrowEndRef.current = { x: mapX, y: mapY };
@@ -360,7 +519,7 @@ export default function MapBoard({ stageRefFromParent }: MapBoardProps) {
         return;
       }
     },
-    [viewport, activeTool]
+    [viewport, activeTool, toDataCoords]
   );
 
   const handleMouseMove = useCallback(
@@ -377,11 +536,16 @@ export default function MapBoard({ stageRefFromParent }: MapBoardProps) {
       if (!stage) return;
       const pointer = stage.getPointerPosition();
       if (!pointer) return;
-      const mapX = (pointer.x - viewport.x) / viewport.scale;
-      const mapY = (pointer.y - viewport.y) / viewport.scale;
+      const visualX = (pointer.x - viewport.x) / viewport.scale;
+      const visualY = (pointer.y - viewport.y) / viewport.scale;
+      const { x: mapX, y: mapY } = toDataCoords(visualX, visualY);
 
       if (isDrawing && activeTool === "draw") {
         setDrawingPoints((prev) => [...prev, mapX, mapY]);
+      }
+
+      if (activeTool === "eraser" && (e.evt.buttons === 1 || e.evt.buttons === 2)) {
+        erase(mapX, mapY);
       }
 
       if (arrowStartRef.current && activeTool === "arrow") {
@@ -393,11 +557,15 @@ export default function MapBoard({ stageRefFromParent }: MapBoardProps) {
           mapY,
         ]);
       }
+
+      // Broadcast cursor move
+      realtimeService.send("CURSOR_MOVE", { x: mapX, y: mapY, color: "#17E6A1" });
     },
-    [setViewport, isDrawing, activeTool, viewport]
+    [setViewport, isDrawing, activeTool, viewport, toDataCoords]
   );
 
   const handleMouseUp = useCallback(() => {
+    mouseDownStart.current = null;
     if (isPanning.current) {
       isPanning.current = false;
       setCursorStyle(
@@ -406,14 +574,12 @@ export default function MapBoard({ stageRefFromParent }: MapBoardProps) {
       return;
     }
 
-    // Save freehand drawing
     if (isDrawing && drawingPoints.length >= 4) {
       addDrawing({ type: "freehand", points: drawingPoints, color: drawColor });
     }
     setIsDrawing(false);
     setDrawingPoints([]);
 
-    // Save arrow drawing
     if (arrowStartRef.current && arrowEndRef.current) {
       const s = arrowStartRef.current;
       const en = arrowEndRef.current;
@@ -439,57 +605,67 @@ export default function MapBoard({ stageRefFromParent }: MapBoardProps) {
     []
   );
 
-  // ── Determine cursor ──────────────────────────────────────
+  const handleDragOver = (e: React.DragEvent) => e.preventDefault();
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const dataStr = e.dataTransfer.getData("agent-data");
+    if (!dataStr) return;
+
+    try {
+      const data = JSON.parse(dataStr);
+      const container = containerRef.current;
+      if (!container) return;
+
+      const rect = container.getBoundingClientRect();
+      const visualX = (e.clientX - rect.left - viewport.x) / viewport.scale;
+      const visualY = (e.clientY - rect.top - viewport.y) / viewport.scale;
+      const { x: mapX, y: mapY } = toDataCoords(visualX, visualY);
+
+      addItem({
+        type: data.utilityName ? "utility" : "agent",
+        agentName: data.agentName,
+        utilityName: data.utilityName,
+        x: mapX,
+        y: mapY,
+        team: data.team,
+        color: data.color,
+      });
+    } catch (err) {
+      console.error("Failed to drop item", err);
+    }
+  };
+
   const effectiveCursor =
     cursorStyle === "grab" || cursorStyle === "grabbing"
       ? cursorStyle
-      : pendingAgent
-      ? "crosshair"
-      : activeTool === "draw" || activeTool === "arrow"
-      ? "crosshair"
-      : "default";
+      : pendingAgent || activeTool === "draw" || activeTool === "arrow"
+        ? "crosshair"
+        : "default";
 
   return (
     <div
       ref={containerRef}
-      className="flex-1 bg-neutral-950 overflow-hidden relative"
+      className="flex-1 bg-neutral-950 overflow-hidden relative touch-none"
       onContextMenu={(e) => e.preventDefault()}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
     >
-      {/* Loading indicator */}
       {mapLoading && (
         <div className="absolute inset-0 flex items-center justify-center z-20">
           <div className="flex flex-col items-center gap-3">
             <div className="w-8 h-8 border-2 border-neutral-600 border-t-blue-500 rounded-full animate-spin" />
-            <span className="text-neutral-400 text-sm">
-              Loading {mapDef.displayName}...
-            </span>
+            <span className="text-neutral-400 text-sm">Loading {mapDef.displayName}...</span>
           </div>
         </div>
       )}
 
-
-
-      {/* Pending agent indicator */}
       {pendingAgent && (
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 bg-neutral-800/90 backdrop-blur text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 shadow-lg border border-neutral-700">
-          <span
-            className="w-3 h-3 rounded-full"
-            style={{ backgroundColor: pendingAgent.color }}
-          />
-          Click to place{" "}
-          <strong>
-            {pendingAgent.agentName}
-            {pendingAgent.utilityName ? ` — ${pendingAgent.utilityName}` : ""}
-          </strong>
-          <span className="text-neutral-400 text-xs ml-1">
-            ({pendingAgent.team === "attack" ? "ATK" : "DEF"})
-          </span>
-          <button
-            onClick={() => setPendingAgent(null)}
-            className="ml-2 text-neutral-400 hover:text-white transition-colors"
-          >
-            ✕
-          </button>
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 bg-neutral-800/90 backdrop-blur text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 shadow-lg border border-neutral-700 select-none">
+          <span className="w-3 h-3 rounded-full" style={{ backgroundColor: pendingAgent.color }} />
+          Click to place <strong>{pendingAgent.agentName}{pendingAgent.utilityName ? ` — ${pendingAgent.utilityName}` : ""}</strong>
+          <span className="text-neutral-400 text-xs ml-1">({pendingAgent.team === "attack" ? "ATK" : "DEF"})</span>
+          <button onClick={() => setPendingAgent(null)} className="ml-2 text-neutral-400 hover:text-white">✕</button>
         </div>
       )}
 
@@ -506,141 +682,76 @@ export default function MapBoard({ stageRefFromParent }: MapBoardProps) {
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
         onContextMenu={handleContextMenu}
         style={{ cursor: effectiveCursor }}
       >
         <Layer>
-          {/* Map background (pre-rotated for horizontal maps) */}
           {mapImage && !mapLoadError ? (
-            <KonvaImage
-              image={mapImage}
-              x={0}
-              y={0}
-              width={mapDef.width}
-              height={mapDef.height}
-              name="map-image"
-            />
+            <KonvaImage image={mapImage} x={0} y={0} width={mapDef.width} height={mapDef.height} name="map-image" />
           ) : (
             <>
-              <Rect
-                x={0}
-                y={0}
-                width={mapDef.width}
-                height={mapDef.height}
-                fill="#1a1a2e"
-                stroke="#333"
-                strokeWidth={2}
-                name="map-bg"
-              />
-              {Array.from({ length: 11 }).map((_, i) => (
-                <React.Fragment key={`grid-${i}`}>
-                  <Rect
-                    x={i * (mapDef.width / 10)}
-                    y={0}
-                    width={1}
-                    height={mapDef.height}
-                    fill="#333"
-                  />
-                  <Rect
-                    x={0}
-                    y={i * (mapDef.height / 10)}
-                    width={mapDef.width}
-                    height={1}
-                    fill="#333"
-                  />
-                </React.Fragment>
-              ))}
-              <Text
-                text={`${mapDef.displayName}\n(Loading map image...)`}
-                x={mapDef.width / 2 - 150}
-                y={mapDef.height / 2 - 20}
-                fontSize={18}
-                fill="#666"
-                align="center"
-                width={300}
-              />
+              <Rect x={0} y={0} width={mapDef.width} height={mapDef.height} fill="#1a1a2e" stroke="#333" strokeWidth={2} name="map-bg" />
+              <Text text={`${mapDef.displayName}\n(Loading map image...)`} x={mapDef.width / 2 - 150} y={mapDef.height / 2 - 20} fontSize={18} fill="#666" align="center" width={300} />
             </>
           )}
 
-          {/* Saved drawings (freehand + arrows) */}
-          {drawings.map((d) =>
-            d.type === "arrow" ? (
-              <Arrow
-                key={d.id}
-                points={d.points}
-                stroke={d.color}
-                fill={d.color}
-                strokeWidth={d.id === selectedDrawingId ? 5 : 3}
-                pointerLength={12}
-                pointerWidth={10}
-                opacity={d.id === selectedDrawingId ? 1 : 0.85}
-                onClick={(e) => {
-                  e.cancelBubble = true;
-                  selectItem(null);
-                  setSelectedDrawing(d.id);
-                }}
-              />
-            ) : (
-              <Line
-                key={d.id}
-                points={d.points}
-                stroke={d.color}
-                strokeWidth={d.id === selectedDrawingId ? 5 : 3}
-                tension={0.3}
-                lineCap="round"
-                lineJoin="round"
-                opacity={d.id === selectedDrawingId ? 1 : 0.8}
-                onClick={(e) => {
-                  e.cancelBubble = true;
-                  selectItem(null);
-                  setSelectedDrawing(d.id);
-                }}
-              />
-            )
-          )}
+          <Group
+            rotation={mapRotationOffset}
+            offsetX={mapDef.width / 2}
+            offsetY={mapDef.height / 2}
+            x={mapDef.width / 2}
+            y={mapDef.height / 2}
+          >
+            {drawings.map((d) =>
+              d.type === "arrow" ? (
+                <Arrow
+                  key={d.id}
+                  points={d.points}
+                  stroke={d.color}
+                  fill={d.color}
+                  strokeWidth={d.id === selectedDrawingId ? 5 : 3}
+                  pointerLength={12}
+                  pointerWidth={10}
+                  opacity={d.id === selectedDrawingId ? 1 : 0.85}
+                  onClick={(e) => { e.cancelBubble = true; selectItem(null); setSelectedDrawing(d.id); }}
+                />
+              ) : (
+                <Line
+                  key={d.id}
+                  points={d.points}
+                  stroke={d.color}
+                  strokeWidth={d.id === selectedDrawingId ? 5 : 3}
+                  tension={0.3}
+                  lineCap="round"
+                  lineJoin="round"
+                  opacity={d.id === selectedDrawingId ? 1 : 0.8}
+                  onClick={(e) => { e.cancelBubble = true; selectItem(null); setSelectedDrawing(d.id); }}
+                />
+              )
+            )}
 
-          {/* In-progress freehand drawing */}
-          {isDrawing && drawingPoints.length >= 2 && (
-            <Line
-              points={drawingPoints}
-              stroke={drawColor}
-              strokeWidth={3}
-              tension={0.3}
-              lineCap="round"
-              lineJoin="round"
-              opacity={0.6}
-            />
-          )}
+            {isDrawing && drawingPoints.length >= 2 && (
+              <Line points={drawingPoints} stroke={drawColor} strokeWidth={3} tension={0.3} lineCap="round" lineJoin="round" opacity={0.6} />
+            )}
 
-          {/* In-progress arrow */}
-          {arrowPreview && (
-            <Arrow
-              points={arrowPreview}
-              stroke={drawColor}
-              fill={drawColor}
-              strokeWidth={3}
-              pointerLength={12}
-              pointerWidth={10}
-              opacity={0.6}
-            />
-          )}
+            {arrowPreview && (
+              <Arrow points={arrowPreview} stroke={drawColor} fill={drawColor} strokeWidth={3} pointerLength={12} pointerWidth={10} opacity={0.6} />
+            )}
 
-          {/* Draggable items on the board */}
-          {items.map((item) =>
-            item.type === "utility" ? (
-              <UtilityIcon
-                key={item.id}
-                item={item}
-                isSelected={selectedItemId === item.id}
-              />
-            ) : (
-              <DraggableAgent
-                key={item.id}
-                item={item}
-                isSelected={selectedItemId === item.id}
-              />
-            )
-          )}
+            {items.map((item) =>
+              item.type === "utility" ? (
+                <UtilityIcon key={item.id} item={item} isSelected={selectedItemId === item.id} />
+              ) : (
+                <DraggableAgent key={item.id} item={item} isSelected={selectedItemId === item.id} />
+              )
+            )}
+
+            <MapZonesOverlay />
+            <RemoteCursors />
+          </Group>
         </Layer>
       </Stage>
     </div>

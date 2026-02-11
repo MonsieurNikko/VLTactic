@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { BoardItem, ViewportState, DrawingItem } from "@/types";
 import { DEFAULT_MAP, MAPS } from "@/data/maps";
 import { loadBoardState, saveBoardState } from "@/utils/localStorage";
+import { realtimeService } from "@/utils/realtimeService";
 
 // ============================================================
 // Zustand Store — Single source of truth for the board state
@@ -15,12 +16,13 @@ interface BoardStore {
   mapRotationOffset: number; // Additional rotation offset (0, 90, 180, 270)
   viewport: ViewportState;
   selectedItemId: string | null;
-  activeTool: "select" | "draw" | "arrow";
+  activeTool: "select" | "draw" | "arrow" | "eraser";
   drawings: DrawingItem[];
   redoDrawings: DrawingItem[];
   drawColor: string;
   stageSize: { width: number; height: number };
   selectedDrawingId: string | null;
+  showZones: boolean;
 
   // Pending item to be placed via click on map
   pendingAgent: {
@@ -30,30 +32,38 @@ interface BoardStore {
     utilityName?: string;
   } | null;
 
+  // Real-time state
+  remoteCursors: Record<string, { x: number; y: number; color: string; lastSeen: number }>;
+
   // ── Actions ───────────────────────────────────────────────
-  addItem: (item: Omit<BoardItem, "id">) => void;
-  updateItemPosition: (id: string, x: number, y: number) => void;
-  removeItem: (id: string) => void;
+  addItem: (item: Omit<BoardItem, "id">, remote?: boolean) => void;
+  updateItemPosition: (id: string, x: number, y: number, remote?: boolean) => void;
+  removeItem: (id: string, remote?: boolean) => void;
   selectItem: (id: string | null) => void;
-  clearBoard: () => void;
+  clearBoard: (remote?: boolean) => void;
   setSelectedMap: (mapName: string) => void;
   setViewport: (viewport: Partial<ViewportState>) => void;
   setActiveTool: (tool: BoardStore["activeTool"]) => void;
   setPendingAgent: (agent: BoardStore["pendingAgent"]) => void;
-  addDrawing: (drawing: Omit<DrawingItem, "id">) => void;
+  addDrawing: (drawing: Omit<DrawingItem, "id">, remote?: boolean) => void;
   undoDrawing: () => void;
   redoDrawing: () => void;
-  removeDrawing: (id: string) => void;
+  removeDrawing: (id: string, remote?: boolean) => void;
   clearDrawings: () => void;
   setDrawColor: (color: string) => void;
   setStageSize: (size: { width: number; height: number }) => void;
   resetView: () => void;
   setSelectedDrawing: (id: string | null) => void;
   rotateMap: () => void; // Rotate map by 90° clockwise
-  
+  updateRemoteCursor: (userId: string, data: { x: number; y: number; color: string }) => void;
+  removeRemoteCursor: (userId: string) => void;
+
   // Save/Load actions (NEW)
   saveToLocalStorage: () => void;
   loadFromLocalStorage: () => boolean;
+  erase: (x: number, y: number) => void;
+  initSession: () => void;
+  toggleZones: () => void;
 }
 
 let _nextId = 1;
@@ -84,34 +94,53 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
   drawColor: "#FFD700",
   stageSize: { width: 800, height: 600 },
   selectedDrawingId: null,
+  remoteCursors: {},
+  showZones: true,
 
   // ── Actions ───────────────────────────────────────────────
-  addItem: (item) =>
+  addItem: (item, remote) => {
+    const id = genId();
     set((s) => ({
-      items: [...s.items, { ...item, id: genId() }],
-    })),
+      items: [...s.items, { ...item, id }],
+    }));
+    if (!remote) {
+      realtimeService.send("ITEM_ADDED", { ...item, id });
+    }
+  },
 
-  updateItemPosition: (id, x, y) =>
+  updateItemPosition: (id, x, y, remote) => {
     set((s) => ({
       items: s.items.map((i) => (i.id === id ? { ...i, x, y } : i)),
-    })),
+    }));
+    if (!remote) {
+      realtimeService.send("ITEM_MOVED", { id, x, y });
+    }
+  },
 
-  removeItem: (id) =>
+  removeItem: (id, remote) => {
     set((s) => ({
       items: s.items.filter((i) => i.id !== id),
       selectedItemId: s.selectedItemId === id ? null : s.selectedItemId,
-    })),
+    }));
+    if (!remote) {
+      realtimeService.send("ITEM_REMOVED", { id });
+    }
+  },
 
   selectItem: (id) => set({ selectedItemId: id, selectedDrawingId: null }),
 
-  clearBoard: () =>
+  clearBoard: (remote) => {
     set({
       items: [],
       selectedItemId: null,
       drawings: [],
       redoDrawings: [],
       selectedDrawingId: null,
-    }),
+    });
+    if (!remote) {
+      realtimeService.send("BOARD_CLEARED", {});
+    }
+  },
 
   setSelectedMap: (mapName) =>
     set({
@@ -139,11 +168,16 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
       activeTool: agent ? "select" : s.activeTool,
     })),
 
-  addDrawing: (drawing) =>
+  addDrawing: (drawing, remote) => {
+    const id = genDrawingId();
     set((s) => ({
-      drawings: [...s.drawings, { ...drawing, id: genDrawingId() }],
+      drawings: [...s.drawings, { ...drawing, id }],
       redoDrawings: [],
-    })),
+    }));
+    if (!remote) {
+      realtimeService.send("DRAWING_ADDED", { ...drawing, id });
+    }
+  },
 
   undoDrawing: () =>
     set((s) => {
@@ -166,11 +200,15 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
       };
     }),
 
-  removeDrawing: (id) =>
+  removeDrawing: (id, remote) => {
     set((s) => ({
       drawings: s.drawings.filter((d) => d.id !== id),
       selectedDrawingId: s.selectedDrawingId === id ? null : s.selectedDrawingId,
-    })),
+    }));
+    if (!remote) {
+      realtimeService.send("DRAWING_REMOVED", { id });
+    }
+  },
 
   clearDrawings: () => set({ drawings: [], redoDrawings: [], selectedDrawingId: null }),
 
@@ -194,68 +232,86 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
 
   rotateMap: () => {
     const s = get();
-    const mapDef = MAPS.find((m) => m.name === s.selectedMap) ?? MAPS[0];
-    const cx = mapDef.width / 2;
-    const cy = mapDef.height / 2;
-
-    // Rotate point 90° clockwise around center
-    const rotate90CW = (x: number, y: number) => ({
-      x: cx + (y - cy),
-      y: cy - (x - cx),
-    });
-
-    // Rotate all items
-    const rotatedItems = s.items.map((item) => {
-      const { x, y } = rotate90CW(item.x, item.y);
-      return { ...item, x, y };
-    });
-
-    // Rotate all drawings (points array: [x1,y1,x2,y2,...])
-    const rotatedDrawings = s.drawings.map((drawing) => {
-      const newPoints: number[] = [];
-      for (let i = 0; i < drawing.points.length; i += 2) {
-        const { x, y } = rotate90CW(drawing.points[i], drawing.points[i + 1]);
-        newPoints.push(x, y);
-      }
-      return { ...drawing, points: newPoints };
-    });
-
-    // Also rotate redo stack
-    const rotatedRedoDrawings = s.redoDrawings.map((drawing) => {
-      const newPoints: number[] = [];
-      for (let i = 0; i < drawing.points.length; i += 2) {
-        const { x, y } = rotate90CW(drawing.points[i], drawing.points[i + 1]);
-        newPoints.push(x, y);
-      }
-      return { ...drawing, points: newPoints };
-    });
-
     set({
       mapRotationOffset: (s.mapRotationOffset + 90) % 360,
-      items: rotatedItems,
-      drawings: rotatedDrawings,
-      redoDrawings: rotatedRedoDrawings,
     });
+    // Auto-save after rotation
+    get().saveToLocalStorage();
   },
 
   // ── Save/Load (NEW) ───────────────────────────────────────
   saveToLocalStorage: () => {
-    const { items, drawings, selectedMap } = get();
-    saveBoardState(items, drawings, selectedMap);
+    const { items, drawings, selectedMap, mapRotationOffset } = get();
+    saveBoardState(items, drawings, selectedMap, mapRotationOffset);
   },
 
   loadFromLocalStorage: () => {
     const saved = loadBoardState();
     if (!saved) return false;
-    
+
     set({
       items: saved.items,
       drawings: saved.drawings,
       selectedMap: saved.selectedMap,
+      mapRotationOffset: saved.mapRotationOffset ?? 0,
       redoDrawings: [],
       selectedItemId: null,
       selectedDrawingId: null,
     });
     return true;
   },
+
+  erase: (x, y) => {
+    const { items, drawings, removeItem, removeDrawing } = get();
+    const ERASE_RADIUS = 20;
+
+    // Erase items
+    items.forEach((item) => {
+      const dx = item.x - x;
+      const dy = item.y - y;
+      if (Math.hypot(dx, dy) < ERASE_RADIUS) {
+        removeItem(item.id);
+      }
+    });
+
+    // Erase drawings
+    drawings.forEach((d) => {
+      for (let i = 0; i < d.points.length; i += 2) {
+        const dx = d.points[i] - x;
+        const dy = d.points[i + 1] - y;
+        if (Math.hypot(dx, dy) < ERASE_RADIUS) {
+          removeDrawing(d.id);
+          break;
+        }
+      }
+    });
+  },
+
+  initSession: () => {
+    if (typeof window === "undefined") return;
+    const SESSION_ACTIVE = "vltactic-session-active";
+    if (!sessionStorage.getItem(SESSION_ACTIVE)) {
+      console.log("New session: Clearing board state");
+      get().clearBoard();
+      // Also clear localStorage to be sure
+      localStorage.removeItem("vltactic-board-state");
+      sessionStorage.setItem(SESSION_ACTIVE, "true");
+    }
+  },
+
+  updateRemoteCursor: (userId, data) =>
+    set((s) => ({
+      remoteCursors: {
+        ...s.remoteCursors,
+        [userId]: { ...data, lastSeen: Date.now() },
+      },
+    })),
+
+  removeRemoteCursor: (userId) =>
+    set((s) => {
+      const { [userId]: _, ...rest } = s.remoteCursors;
+      return { remoteCursors: rest };
+    }),
+
+  toggleZones: () => set((s) => ({ showZones: !s.showZones })),
 }));

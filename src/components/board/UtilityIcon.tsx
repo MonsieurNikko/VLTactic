@@ -20,14 +20,14 @@ interface Props {
 const UTIL_RADIUS = 14;
 
 export function UtilityIcon({ item, isSelected }: Props) {
-  const { updateItemPosition, selectItem } = useBoardStore();
+  const { updateItemPosition, selectItem, mapRotationOffset } = useBoardStore();
   const groupRef = useRef<Konva.Group>(null);
   const [abilityImage, setAbilityImage] = useState<HTMLImageElement | null>(null);
 
   // Load real ability icon from Valorant API CDN
   useEffect(() => {
     let mounted = true;
-    
+
     if (!item.agentName || !item.utilityName) {
       setAbilityImage(null);
       return;
@@ -79,6 +79,7 @@ export function UtilityIcon({ item, isSelected }: Props) {
       ref={groupRef}
       x={item.x}
       y={item.y}
+      rotation={-mapRotationOffset} // Counter-rotate
       draggable
       onDragEnd={handleDragEnd}
       onClick={handleClick}
@@ -108,10 +109,12 @@ export function UtilityIcon({ item, isSelected }: Props) {
         opacity={0.7}
       />
 
-      {/* Main circle backdrop */}
+      {/* Main circle backdrop with white stroke for contrast */}
       <Circle
         radius={UTIL_RADIUS}
         fill={style.fillColor}
+        stroke="#ffffff"
+        strokeWidth={1.5}
         shadowColor="black"
         shadowBlur={4}
         shadowOpacity={0.5}

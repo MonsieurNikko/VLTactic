@@ -9,6 +9,7 @@ interface SavedBoardState {
   items: BoardItem[];
   drawings: DrawingItem[];
   selectedMap: string;
+  mapRotationOffset: number; // NEW: Persist rotation view state
   timestamp: number;
   version: string;
 }
@@ -21,7 +22,8 @@ const isClient = typeof window !== "undefined" && typeof window.localStorage !==
 export function saveBoardState(
   items: BoardItem[],
   drawings: DrawingItem[],
-  selectedMap: string
+  selectedMap: string,
+  mapRotationOffset: number // NEW
 ): void {
   if (!isClient) return;
   try {
@@ -29,6 +31,7 @@ export function saveBoardState(
       items,
       drawings,
       selectedMap,
+      mapRotationOffset,
       timestamp: Date.now(),
       version: CURRENT_VERSION,
     };
@@ -43,13 +46,13 @@ export function loadBoardState(): SavedBoardState | null {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) return null;
-    
+
     const state = JSON.parse(stored) as SavedBoardState;
     // Version check for future migrations
     if (!state.version || state.version !== CURRENT_VERSION) {
       console.warn("Saved state version mismatch, may have compatibility issues");
     }
-    
+
     return state;
   } catch (error) {
     console.error("Failed to load board state:", error);
@@ -78,14 +81,21 @@ export function getLastSaveTime(): number | null {
 
 // Auto-save hook for React components
 export function setupAutoSave(
-  getState: () => { items: BoardItem[]; drawings: DrawingItem[]; selectedMap: string }
+  getState: () => { items: BoardItem[]; drawings: DrawingItem[]; selectedMap: string; mapRotationOffset: number }
 ): () => void {
-  if (!isClient) return () => {};
+  if (!isClient) return () => { };
+
+  // Track if initial load happened to avoid saving empty state over existing data on first render
+  let hasLoaded = false;
+
   const intervalId = setInterval(() => {
-    const { items, drawings, selectedMap } = getState();
-    if (items.length > 0 || drawings.length > 0) {
-      saveBoardState(items, drawings, selectedMap);
-    }
+    const { items, drawings, selectedMap, mapRotationOffset } = getState();
+
+    // Only save if we have data OR if we've explicitly loaded/interacted.
+    // Logic: If board is empty, we STILL want to save to clear storage (e.g. user clicked "New")
+    // But we need to avoid the initial hydration race where state might be empty before loadBoardState runs.
+    // For now, simpler approach: Always save. The hooks in MapBoard ensure load happens first.
+    saveBoardState(items, drawings, selectedMap, mapRotationOffset);
   }, AUTO_SAVE_INTERVAL);
 
   return () => clearInterval(intervalId);
