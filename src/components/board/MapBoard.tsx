@@ -156,7 +156,7 @@ export default function MapBoard({ stageRefFromParent }: MapBoardProps) {
       if (!mounted) return;
       const rotation = mapDef.rotation ?? 0;
       if (rotation !== 0) {
-        // Pre-rotate horizontal maps via offscreen canvas
+        // Pre-rotate maps via offscreen canvas for standard tactical orientation
         const canvas = document.createElement("canvas");
         canvas.width = img.width;
         canvas.height = img.height;
@@ -465,53 +465,7 @@ export default function MapBoard({ stageRefFromParent }: MapBoardProps) {
         </div>
       )}
 
-      {/* Onboarding overlay */}
-      {!pendingAgent && items.length === 0 && !mapLoading && drawings.length === 0 && (
-        <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
-          <div className="bg-neutral-900/80 backdrop-blur-sm border border-neutral-700 rounded-xl px-8 py-6 max-w-sm text-center">
-            <div className="text-2xl mb-3">🎯</div>
-            <h3 className="text-white font-semibold text-sm mb-2">
-              Ready to strategize!
-            </h3>
-            <div className="text-neutral-400 text-xs space-y-1.5">
-              <p>
-                <kbd className="px-1.5 py-0.5 bg-neutral-800 rounded text-neutral-300 text-[10px]">
-                  Click agent
-                </kbd>{" "}
-                in sidebar → expand → click to place
-              </p>
-              <p>
-                <kbd className="px-1.5 py-0.5 bg-neutral-800 rounded text-neutral-300 text-[10px]">
-                  Scroll
-                </kbd>{" "}
-                to zoom ·{" "}
-                <kbd className="px-1.5 py-0.5 bg-neutral-800 rounded text-neutral-300 text-[10px]">
-                  Space + drag
-                </kbd>{" "}
-                to pan
-              </p>
-              <p>
-                <kbd className="px-1.5 py-0.5 bg-neutral-800 rounded text-neutral-300 text-[10px]">
-                  D
-                </kbd>{" "}
-                Draw ·{" "}
-                <kbd className="px-1.5 py-0.5 bg-neutral-800 rounded text-neutral-300 text-[10px]">
-                  A
-                </kbd>{" "}
-                Arrow ·{" "}
-                <kbd className="px-1.5 py-0.5 bg-neutral-800 rounded text-neutral-300 text-[10px]">
-                  Ctrl+Z
-                </kbd>{" "}
-                Undo ·{" "}
-                <kbd className="px-1.5 py-0.5 bg-neutral-800 rounded text-neutral-300 text-[10px]">
-                  Ctrl+Y
-                </kbd>{" "}
-                Redo
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+
 
       {/* Pending agent indicator */}
       {pendingAgent && (
