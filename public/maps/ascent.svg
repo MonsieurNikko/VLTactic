@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#16213e;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  
+  <!-- Grid -->
+  <g stroke="#2a2a4a" stroke-width="0.5" opacity="0.5">
+    <line x1="0" y1="102" x2="1024" y2="102"/>
+    <line x1="0" y1="204" x2="1024" y2="204"/>
+    <line x1="0" y1="307" x2="1024" y2="307"/>
+    <line x1="0" y1="409" x2="1024" y2="409"/>
+    <line x1="0" y1="512" x2="1024" y2="512"/>
+    <line x1="0" y1="614" x2="1024" y2="614"/>
+    <line x1="0" y1="716" x2="1024" y2="716"/>
+    <line x1="0" y1="819" x2="1024" y2="819"/>
+    <line x1="0" y1="921" x2="1024" y2="921"/>
+    <line x1="102" y1="0" x2="102" y2="1024"/>
+    <line x1="204" y1="0" x2="204" y2="1024"/>
+    <line x1="307" y1="0" x2="307" y2="1024"/>
+    <line x1="409" y1="0" x2="409" y2="1024"/>
+    <line x1="512" y1="0" x2="512" y2="1024"/>
+    <line x1="614" y1="0" x2="614" y2="1024"/>
+    <line x1="716" y1="0" x2="716" y2="1024"/>
+    <line x1="819" y1="0" x2="819" y2="1024"/>
+    <line x1="921" y1="0" x2="921" y2="1024"/>
+  </g>
+  
+  <!-- Simplified Ascent Layout -->
+  <g fill="none" stroke="#3a3a5a" stroke-width="2">
+    <!-- Defender spawn area -->
+    <rect x="430" y="30" width="164" height="80" rx="4" fill="#1e2a4a" opacity="0.6"/>
+    
+    <!-- Mid area -->
+    <rect x="430" y="350" width="164" height="200" rx="4" fill="#1e2a4a" opacity="0.4"/>
+    
+    <!-- A Site -->
+    <rect x="680" y="150" width="160" height="160" rx="8" fill="#4a1a1a" opacity="0.4" stroke="#ff4655" stroke-width="2"/>
+    
+    <!-- B Site -->
+    <rect x="184" y="150" width="160" height="160" rx="8" fill="#4a1a1a" opacity="0.4" stroke="#ff4655" stroke-width="2"/>
+    
+    <!-- A Main corridor -->
+    <rect x="720" y="350" width="80" height="300" rx="4" fill="#1e2a4a" opacity="0.3"/>
+    
+    <!-- B Main corridor -->
+    <rect x="224" y="350" width="80" height="300" rx="4" fill="#1e2a4a" opacity="0.3"/>
+    
+    <!-- Attacker spawn area -->
+    <rect x="390" y="850" width="244" height="80" rx="4" fill="#1a3a1e" opacity="0.6"/>
+    
+    <!-- Mid corridor -->
+    <rect x="472" y="550" width="80" height="300" rx="4" fill="#1e2a4a" opacity="0.3"/>
+  </g>
+  
+  <!-- Zone Labels -->
+  <g font-family="Arial, sans-serif" font-size="14" fill="#888" text-anchor="middle">
+    <text x="512" y="78" font-size="12" fill="#6a6aaa">DEF SPAWN</text>
+    <text x="760" y="238" fill="#ff4655" font-size="16" font-weight="bold">A</text>
+    <text x="264" y="238" fill="#ff4655" font-size="16" font-weight="bold">B</text>
+    <text x="512" y="460" fill="#6a6aaa">MID</text>
+    <text x="760" y="520" fill="#555" font-size="11">A Main</text>
+    <text x="264" y="520" fill="#555" font-size="11">B Main</text>
+    <text x="512" y="720" fill="#555" font-size="11">Mid Courtyard</text>
+    <text x="512" y="898" font-size="12" fill="#4a8a4a">ATK SPAWN</text>
+  </g>
+  
+  <!-- Title -->
+  <text x="512" y="1010" font-family="Arial, sans-serif" font-size="11" fill="#444" text-anchor="middle">
+    ASCENT — Simplified Layout (replace with actual minimap)
+  </text>
+</svg>
