@@ -153,7 +153,26 @@ export default function MapBoard({ stageRefFromParent }: MapBoardProps) {
     img.crossOrigin = "anonymous";
     img.src = mapDef.imagePath;
     img.onload = () => {
-      if (mounted) {
+      if (!mounted) return;
+      const rotation = mapDef.rotation ?? 0;
+      if (rotation !== 0) {
+        // Pre-rotate horizontal maps via offscreen canvas
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext("2d")!;
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.rotate((rotation * Math.PI) / 180);
+        ctx.drawImage(img, -img.width / 2, -img.height / 2);
+        const rotatedImg = new window.Image();
+        rotatedImg.src = canvas.toDataURL();
+        rotatedImg.onload = () => {
+          if (mounted) {
+            setMapImage(rotatedImg);
+            setMapLoadError(false);
+          }
+        };
+      } else {
         setMapImage(img);
         setMapLoadError(false);
       }
@@ -169,7 +188,7 @@ export default function MapBoard({ stageRefFromParent }: MapBoardProps) {
       img.onload = null;
       img.onerror = null;
     };
-  }, [mapDef.imagePath]);
+  }, [mapDef.imagePath, mapDef.rotation]);
 
   // ── Key handlers ──────────────────────────────────────────
   useEffect(() => {
@@ -535,15 +554,12 @@ export default function MapBoard({ stageRefFromParent }: MapBoardProps) {
         style={{ cursor: effectiveCursor }}
       >
         <Layer>
-          {/* Map background */}
+          {/* Map background (pre-rotated for horizontal maps) */}
           {mapImage && !mapLoadError ? (
             <KonvaImage
               image={mapImage}
-              x={mapDef.rotation ? mapDef.width / 2 : 0}
-              y={mapDef.rotation ? mapDef.height / 2 : 0}
-              offsetX={mapDef.rotation ? mapDef.width / 2 : 0}
-              offsetY={mapDef.rotation ? mapDef.height / 2 : 0}
-              rotation={mapDef.rotation ?? 0}
+              x={0}
+              y={0}
               width={mapDef.width}
               height={mapDef.height}
               name="map-image"
