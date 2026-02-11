@@ -1,0 +1,45 @@
+# Task: AI-Powered Valorant Strategy Web App
+
+- [x] Project Planning & Discussion
+    - [x] Create brainstorming document (`brainstorming.md`)
+    - [x] Discuss core features and AI integration with user
+    - [x] Finalize tech stack (Canvas vs. DOM, AI models)
+    - [x] Create `implementation_plan.md`
+- [x] AI Documentation & Context
+    - [x] Create `project_context.md` (Project Vision, Stack, Constraints)
+    - [x] Create `agent_guidelines.md` (Coding Rules, Token Optimization, Workflow)
+- [x] Phase 1: Foundation & Core Board
+    - [x] Initialize Next.js project
+    - [x] Implement `MapBoard` with Konva.js
+    - [x] Implement Draggable Agents/Utils
+- [x] Phase 1.5: Quality Upgrades (v0.2 → v0.3)
+    - [x] Real CDN map images (valorant-api.com)
+    - [x] Utility placement system (abilities → colored icons on map)
+    - [x] Freehand drawing tool (marker mode)
+    - [x] Space+Drag panning
+    - [x] Onboarding overlay
+    - [x] Multi-color drawing (6 colors)
+    - [x] Arrow tool with preview
+    - [x] Undo drawings (Ctrl+Z)
+    - [x] Sidebar click logic fix (expand vs place separation)
+    - [x] Agent CDN display icons (28 agents)
+    - [x] Centralized ability type mapping (60+ abilities → 7 types)
+    - [x] New agents & ability corrections (Veto, Waylay, Tejo, Vyse, Harbor)
+    - [x] Mobile sidebar toggle (☰ button)
+    - [x] Keyboard shortcuts (V/D/A/Ctrl+Z/Space/Del/Esc)
+    - [x] resetView computed from stageSize (no magic numbers)
+    - [x] Push to GitHub (MonsieurNikko/VLTactic)
+- [ ] Phase 2: "Tree System" & Data Logic
+    - [ ] Define Map Zones (Proof of Concept for Ascent)
+    - [ ] Implement `getZoneFromCoordinates(x, y)`
+    - [ ] Implement `generateTacticalDescription(gameState)`
+- [ ] Phase 3: Real-time & Collaboration
+    - [ ] Setup Supabase Realtime
+    - [ ] Sync State across clients (cursor + items)
+- [ ] Phase 4: Lineups & Polish
+    - [ ] Implement Lineup Drawing & Metadata
+    - [ ] AI Chat Integration (Gemini Flash)
+- [ ] Phase 5: Advanced Features ("Big 3")
+    - [ ] Economy Calculator
+    - [ ] Timeline / Playback
+    - [ ] VOD Sync
